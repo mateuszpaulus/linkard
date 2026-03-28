@@ -1,0 +1,134 @@
+### Variables
+@baseUrl = http://localhost:8080
+@username = jankowalski
+
+
+### ==========================================
+### PUBLIC PROFILE (no auth required)
+### ==========================================
+
+### Get public profile by username
+GET {{baseUrl}}/api/p/{{username}}
+Accept: application/json
+
+
+### ==========================================
+### MY PROFILE (locally no token needed)
+### ==========================================
+
+### Get my profile
+GET {{baseUrl}}/api/me/profile
+Accept: application/json
+
+###
+
+### Create profile (first time setup)
+POST {{baseUrl}}/api/me/profile
+Content-Type: application/json
+
+{
+  "username": "jankowalski",
+  "displayName": "Jan Kowalski",
+  "bio": "Full-stack developer helping startups build products",
+  "location": "Warsaw",
+  "websiteUrl": "https://jankowalski.dev"
+}
+
+###
+
+### Update profile (partial update)
+PATCH {{baseUrl}}/api/me/profile
+Content-Type: application/json
+
+{
+  "bio": "Updated bio: Full-stack developer helping startups build products"
+}
+
+
+### ==========================================
+### SERVICES
+### ==========================================
+
+### Get my services
+GET {{baseUrl}}/api/me/services
+Accept: application/json
+
+###
+
+### Add service
+POST {{baseUrl}}/api/me/services
+Content-Type: application/json
+
+{
+  "title": "1h Consultation",
+  "description": "We discuss your project, architecture or technical problem",
+  "price": 300.00,
+  "currency": "PLN",
+  "priceLabel": "/ hour"
+}
+
+###
+
+### Add second service
+POST {{baseUrl}}/api/me/services
+Content-Type: application/json
+
+{
+  "title": "Code Review",
+  "description": "I review your code and provide feedback",
+  "price": 500.00,
+  "currency": "PLN",
+  "priceLabel": "/ project"
+}
+
+###
+
+### Delete service (replace with real UUID from GET response)
+DELETE {{baseUrl}}/api/me/services/00000000-0000-0000-0000-000000000000
+
+
+### ==========================================
+### LINKS
+### ==========================================
+
+### Get my links
+GET {{baseUrl}}/api/me/links
+Accept: application/json
+
+###
+
+### Add link
+POST {{baseUrl}}/api/me/links
+Content-Type: application/json
+
+{
+  "label": "GitHub",
+  "url": "https://github.com/jankowalski",
+  "iconName": "github"
+}
+
+###
+
+### Add second link
+POST {{baseUrl}}/api/me/links
+Content-Type: application/json
+
+{
+  "label": "LinkedIn",
+  "url": "https://linkedin.com/in/jankowalski",
+  "iconName": "linkedin"
+}
+
+###
+
+### Delete link (replace with real UUID from GET response)
+DELETE {{baseUrl}}/api/me/links/00000000-0000-0000-0000-000000000000
+
+
+### ==========================================
+### TEST FLOW
+### 1. POST /api/me/profile    -> creates user + profile
+### 2. POST /api/me/services   -> adds a service
+### 3. POST /api/me/links      -> adds a link
+### 4. GET  /api/p/jankowalski -> public view (verify everything saved)
+### ==========================================
