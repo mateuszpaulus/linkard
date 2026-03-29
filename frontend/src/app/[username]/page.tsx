@@ -22,6 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         description: profile.bio ?? `Professional profile of ${username}`,
         type: "profile",
         url: `https://linkard-io.vercel.app/${username}`,
+        ...(profile.avatarUrl && {
+          images: [{ url: profile.avatarUrl, width: 400, height: 400, alt: title }],
+        }),
       },
     };
   } catch {

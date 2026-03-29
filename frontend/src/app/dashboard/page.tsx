@@ -26,6 +26,7 @@ const PLATFORMS = [
   { value: "instagram", label: "Instagram" },
   { value: "twitter", label: "Twitter / X" },
   { value: "youtube", label: "YouTube" },
+  { value: "tiktok", label: "TikTok" },
   { value: "dribbble", label: "Dribbble" },
   { value: "other", label: "Other" },
 ];
