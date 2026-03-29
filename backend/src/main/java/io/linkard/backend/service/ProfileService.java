@@ -27,24 +27,39 @@ public class ProfileService {
         return toResponse(profile);
     }
 
+    @Transactional
     public ProfileResponse getMyProfile(String clerkId) {
-        Profile profile = profileRepository.findByUserClerkId(clerkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-        return toResponse(profile);
+        ensureUserExists(clerkId);
+        return profileRepository.findByUserClerkId(clerkId)
+                .map(this::toResponse)
+                .orElse(emptyProfileResponse());
     }
 
     public List<ServiceResponse> getMyServices(String clerkId) {
-        Profile profile = profileRepository.findByUserClerkId(clerkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-        return serviceRepository.findByProfileIdOrderByDisplayOrderAsc(profile.getId())
-                .stream().map(this::toServiceResponse).toList();
+        return profileRepository.findByUserClerkId(clerkId)
+                .map(p -> serviceRepository.findByProfileIdOrderByDisplayOrderAsc(p.getId())
+                        .stream().map(this::toServiceResponse).toList())
+                .orElse(List.of());
     }
 
     public List<LinkResponse> getMyLinks(String clerkId) {
-        Profile profile = profileRepository.findByUserClerkId(clerkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-        return linkRepository.findByProfileIdOrderByDisplayOrderAsc(profile.getId())
-                .stream().map(this::toLinkResponse).toList();
+        return profileRepository.findByUserClerkId(clerkId)
+                .map(p -> linkRepository.findByProfileIdOrderByDisplayOrderAsc(p.getId())
+                        .stream().map(this::toLinkResponse).toList())
+                .orElse(List.of());
+    }
+
+    private User ensureUserExists(String clerkId) {
+        return userRepository.findByClerkId(clerkId).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setClerkId(clerkId);
+            newUser.setEmail("");
+            return userRepository.save(newUser);
+        });
+    }
+
+    private ProfileResponse emptyProfileResponse() {
+        return new ProfileResponse(null, null, null, null, null, null, null, List.of(), List.of());
     }
 
     @Transactional
