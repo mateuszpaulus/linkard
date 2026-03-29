@@ -17,6 +17,12 @@ import {
   type LinkResponse,
 } from "@/lib/api";
 
+const USERNAME_REGEX = /^[a-z0-9-]{3,30}$/;
+
+function hasProfile(p: ProfileResponse | null): boolean {
+  return p !== null && p.username !== null && p.username !== "";
+}
+
 export default function DashboardPage() {
   const { user } = useUser();
   const { getToken } = useAuth();
@@ -26,6 +32,10 @@ export default function DashboardPage() {
   const [links, setLinks] = useState<LinkResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [error, setError] = useState("");
+  const [usernameError, setUsernameError] = useState("");
 
   const [form, setForm] = useState({
     username: "",
@@ -46,38 +56,65 @@ export default function DashboardPage() {
     try {
       const p = await getMyProfile(token);
       setProfile(p);
-      setForm({
-        username: p.username ?? "",
-        displayName: p.displayName ?? "",
-        bio: p.bio ?? "",
-        location: p.location ?? "",
-        websiteUrl: p.websiteUrl ?? "",
-      });
-      const [s, l] = await Promise.all([
-        getMyServices(token),
-        getMyLinks(token),
-      ]);
-      setServices(s);
-      setLinks(l);
+      if (hasProfile(p)) {
+        setForm({
+          username: p.username ?? "",
+          displayName: p.displayName ?? "",
+          bio: p.bio ?? "",
+          location: p.location ?? "",
+          websiteUrl: p.websiteUrl ?? "",
+        });
+        const [s, l] = await Promise.all([
+          getMyServices(token),
+          getMyLinks(token),
+        ]);
+        setServices(s);
+        setLinks(l);
+      }
     } catch {
-      // Profile doesn't exist yet
+      // Profile doesn't exist yet — show create form
     } finally {
       setLoading(false);
     }
   }
 
+  function handleUsernameChange(value: string) {
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setForm({ ...form, username: cleaned });
+    if (cleaned && !USERNAME_REGEX.test(cleaned)) {
+      setUsernameError("3-30 characters: a-z, 0-9, hyphens only");
+    } else {
+      setUsernameError("");
+    }
+  }
+
   async function handleSaveProfile() {
+    if (!form.username || !USERNAME_REGEX.test(form.username)) {
+      setUsernameError("3-30 characters: a-z, 0-9, hyphens only");
+      return;
+    }
+
     const token = await getToken();
     if (!token) return;
 
+    setSaving(true);
+    setError("");
+    setSuccessMsg("");
+
     try {
-      const saved = profile
+      const saved = hasProfile(profile)
         ? await updateProfile(token, form)
         : await createProfile(token, form);
       setProfile(saved);
       setEditing(false);
+      setSuccessMsg(
+        `Profile saved! Your link: linkard-io.vercel.app/${saved.username}`
+      );
+      setTimeout(() => setSuccessMsg(""), 5000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to save profile");
+      setError(err instanceof Error ? err.message : "Failed to save profile");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -89,20 +126,28 @@ export default function DashboardPage() {
     const token = await getToken();
     if (!token) return;
 
-    const s = await addService(token, {
-      title,
-      description,
-      price: priceStr ? parseFloat(priceStr) : undefined,
-      currency: "PLN",
-    });
-    setServices((prev) => [...prev, s]);
+    try {
+      const s = await addService(token, {
+        title,
+        description,
+        price: priceStr ? parseFloat(priceStr) : undefined,
+        currency: "PLN",
+      });
+      setServices((prev) => [...prev, s]);
+    } catch {
+      setError("Failed to add service");
+    }
   }
 
   async function handleDeleteService(id: string) {
     const token = await getToken();
     if (!token) return;
-    await deleteService(token, id);
-    setServices((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await deleteService(token, id);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+    } catch {
+      setError("Failed to delete service");
+    }
   }
 
   async function handleAddLink() {
@@ -113,15 +158,23 @@ export default function DashboardPage() {
     const token = await getToken();
     if (!token) return;
 
-    const l = await addLink(token, { label, url });
-    setLinks((prev) => [...prev, l]);
+    try {
+      const l = await addLink(token, { label, url });
+      setLinks((prev) => [...prev, l]);
+    } catch {
+      setError("Failed to add link");
+    }
   }
 
   async function handleDeleteLink(id: string) {
     const token = await getToken();
     if (!token) return;
-    await deleteLink(token, id);
-    setLinks((prev) => prev.filter((l) => l.id !== id));
+    try {
+      await deleteLink(token, id);
+      setLinks((prev) => prev.filter((l) => l.id !== id));
+    } catch {
+      setError("Failed to delete link");
+    }
   }
 
   if (loading) {
@@ -132,6 +185,9 @@ export default function DashboardPage() {
     );
   }
 
+  const profileExists = hasProfile(profile);
+  const showForm = editing || !profileExists;
+
   return (
     <div className="flex flex-1 flex-col bg-white dark:bg-zinc-950">
       <header className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
@@ -139,9 +195,9 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <div className="flex items-center gap-4">
-          {profile && (
+          {profileExists && (
             <a
-              href={`/${profile.username}`}
+              href={`/${profile!.username}`}
               target="_blank"
               className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
             >
@@ -153,13 +209,33 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-2xl space-y-8 px-6 py-8">
+        {/* Success message */}
+        {successMsg && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
+            {successMsg}
+          </div>
+        )}
+
+        {/* Error message */}
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+            {error}
+            <button
+              onClick={() => setError("")}
+              className="ml-2 font-medium underline"
+            >
+              dismiss
+            </button>
+          </div>
+        )}
+
         {/* Profile Section */}
         <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              Profile
+              {profileExists ? "Profile" : "Create your profile"}
             </h2>
-            {!editing && (
+            {!showForm && (
               <button
                 onClick={() => setEditing(true)}
                 className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
@@ -169,18 +245,26 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {editing || !profile ? (
+          {showForm ? (
             <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-zinc-400">
+                    linkard-io.vercel.app/
+                  </span>
+                  <input
+                    placeholder="your-username"
+                    value={form.username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                  />
+                </div>
+                {usernameError && (
+                  <p className="mt-1 text-xs text-red-500">{usernameError}</p>
+                )}
+              </div>
               <input
-                placeholder="Username (e.g. jankowalski)"
-                value={form.username}
-                onChange={(e) =>
-                  setForm({ ...form, username: e.target.value })
-                }
-                className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-              />
-              <input
-                placeholder="Display name"
+                placeholder="Display name (e.g. Jan Kowalski)"
                 value={form.displayName}
                 onChange={(e) =>
                   setForm({ ...form, displayName: e.target.value })
@@ -188,14 +272,14 @@ export default function DashboardPage() {
                 className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               />
               <textarea
-                placeholder="Bio"
+                placeholder="Tell people about yourself and what you do..."
                 value={form.bio}
                 onChange={(e) => setForm({ ...form, bio: e.target.value })}
                 rows={3}
                 className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               />
               <input
-                placeholder="Location"
+                placeholder="Location (e.g. Warsaw, Poland)"
                 value={form.location}
                 onChange={(e) =>
                   setForm({ ...form, location: e.target.value })
@@ -203,7 +287,7 @@ export default function DashboardPage() {
                 className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
               />
               <input
-                placeholder="Website URL"
+                placeholder="Website URL (e.g. https://yoursite.com)"
                 value={form.websiteUrl}
                 onChange={(e) =>
                   setForm({ ...form, websiteUrl: e.target.value })
@@ -213,11 +297,12 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveProfile}
-                  className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  disabled={saving}
+                  className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
-                  Save
+                  {saving ? "Saving..." : "Save"}
                 </button>
-                {profile && (
+                {profileExists && (
                   <button
                     onClick={() => setEditing(false)}
                     className="rounded px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
@@ -231,19 +316,19 @@ export default function DashboardPage() {
             <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
               <p>
                 <span className="font-medium text-zinc-900 dark:text-white">
-                  @{profile.username}
+                  @{profile!.username}
                 </span>{" "}
-                {profile.displayName && `- ${profile.displayName}`}
+                {profile!.displayName && `- ${profile!.displayName}`}
               </p>
-              {profile.bio && <p>{profile.bio}</p>}
-              {profile.location && <p>{profile.location}</p>}
-              {profile.websiteUrl && <p>{profile.websiteUrl}</p>}
+              {profile!.bio && <p>{profile!.bio}</p>}
+              {profile!.location && <p>{profile!.location}</p>}
+              {profile!.websiteUrl && <p>{profile!.websiteUrl}</p>}
             </div>
           )}
         </section>
 
         {/* Services Section */}
-        {profile && (
+        {profileExists && (
           <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -295,7 +380,7 @@ export default function DashboardPage() {
         )}
 
         {/* Links Section */}
-        {profile && (
+        {profileExists && (
           <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
