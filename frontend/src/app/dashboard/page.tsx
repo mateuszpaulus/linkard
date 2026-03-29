@@ -16,8 +16,19 @@ import {
   type ServiceResponse,
   type LinkResponse,
 } from "@/lib/api";
+import { ImageUpload } from "@/components/ImageUpload";
 
 const USERNAME_REGEX = /^[a-z0-9-]{3,30}$/;
+
+const PLATFORMS = [
+  { value: "linkedin", label: "LinkedIn" },
+  { value: "github", label: "GitHub" },
+  { value: "instagram", label: "Instagram" },
+  { value: "twitter", label: "Twitter / X" },
+  { value: "youtube", label: "YouTube" },
+  { value: "dribbble", label: "Dribbble" },
+  { value: "other", label: "Other" },
+];
 
 function hasProfile(p: ProfileResponse | null): boolean {
   return p !== null && p.username !== null && p.username !== "";
@@ -37,10 +48,29 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [usernameError, setUsernameError] = useState("");
 
+  // Service form
+  const [showServiceForm, setShowServiceForm] = useState(false);
+  const [serviceForm, setServiceForm] = useState({
+    title: "",
+    description: "",
+    price: "",
+    currency: "PLN",
+    priceLabel: "",
+  });
+
+  // Link form
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [linkForm, setLinkForm] = useState({
+    platform: "linkedin",
+    label: "",
+    url: "",
+  });
+
   const [form, setForm] = useState({
     username: "",
     displayName: "",
     bio: "",
+    avatarUrl: "",
     location: "",
     websiteUrl: "",
   });
@@ -61,6 +91,7 @@ export default function DashboardPage() {
           username: p.username ?? "",
           displayName: p.displayName ?? "",
           bio: p.bio ?? "",
+          avatarUrl: p.avatarUrl ?? "",
           location: p.location ?? "",
           websiteUrl: p.websiteUrl ?? "",
         });
@@ -119,21 +150,21 @@ export default function DashboardPage() {
   }
 
   async function handleAddService() {
-    const title = prompt("Service title:");
-    if (!title) return;
-    const description = prompt("Description (optional):") ?? "";
-    const priceStr = prompt("Price (optional):");
+    if (!serviceForm.title.trim()) return;
     const token = await getToken();
     if (!token) return;
 
     try {
       const s = await addService(token, {
-        title,
-        description,
-        price: priceStr ? parseFloat(priceStr) : undefined,
-        currency: "PLN",
+        title: serviceForm.title,
+        description: serviceForm.description || undefined,
+        price: serviceForm.price ? parseFloat(serviceForm.price) : undefined,
+        currency: serviceForm.currency,
+        priceLabel: serviceForm.priceLabel || undefined,
       });
       setServices((prev) => [...prev, s]);
+      setServiceForm({ title: "", description: "", price: "", currency: "PLN", priceLabel: "" });
+      setShowServiceForm(false);
     } catch {
       setError("Failed to add service");
     }
@@ -151,16 +182,24 @@ export default function DashboardPage() {
   }
 
   async function handleAddLink() {
-    const label = prompt("Link label:");
-    if (!label) return;
-    const url = prompt("URL:");
-    if (!url) return;
+    if (!linkForm.url.trim()) return;
     const token = await getToken();
     if (!token) return;
 
+    const label =
+      linkForm.label.trim() ||
+      PLATFORMS.find((p) => p.value === linkForm.platform)?.label ||
+      "Link";
+
     try {
-      const l = await addLink(token, { label, url });
+      const l = await addLink(token, {
+        label,
+        url: linkForm.url,
+        iconName: linkForm.platform,
+      });
       setLinks((prev) => [...prev, l]);
+      setLinkForm({ platform: "linkedin", label: "", url: "" });
+      setShowLinkForm(false);
     } catch {
       setError("Failed to add link");
     }
@@ -209,14 +248,12 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto w-full max-w-2xl space-y-8 px-6 py-8">
-        {/* Success message */}
         {successMsg && (
           <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300">
             {successMsg}
           </div>
         )}
 
-        {/* Error message */}
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
             {error}
@@ -229,7 +266,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Profile Section */}
+        {/* ── Profile Section ── */}
         <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -247,6 +284,22 @@ export default function DashboardPage() {
 
           {showForm ? (
             <div className="space-y-4">
+              <ImageUpload
+                currentUrl={form.avatarUrl || null}
+                initials={
+                  form.displayName
+                    ? form.displayName
+                        .split(" ")
+                        .map((w) => w[0])
+                        .slice(0, 2)
+                        .join("")
+                        .toUpperCase()
+                    : form.username
+                      ? form.username.slice(0, 2).toUpperCase()
+                      : "?"
+                }
+                onUploaded={(url) => setForm({ ...form, avatarUrl: url })}
+              />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-zinc-400">
@@ -313,13 +366,33 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-              <p>
-                <span className="font-medium text-zinc-900 dark:text-white">
-                  @{profile!.username}
-                </span>{" "}
-                {profile!.displayName && `- ${profile!.displayName}`}
-              </p>
+            <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex items-center gap-4">
+                {profile!.avatarUrl ? (
+                  <img
+                    src={profile!.avatarUrl}
+                    alt={profile!.displayName ?? profile!.username}
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900 text-lg font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                    {profile!.displayName
+                      ? profile!.displayName
+                          .split(" ")
+                          .map((w) => w[0])
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()
+                      : profile!.username!.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-white">
+                    {profile!.displayName ?? `@${profile!.username}`}
+                  </p>
+                  <p className="text-zinc-500">@{profile!.username}</p>
+                </div>
+              </div>
               {profile!.bio && <p>{profile!.bio}</p>}
               {profile!.location && <p>{profile!.location}</p>}
               {profile!.websiteUrl && <p>{profile!.websiteUrl}</p>}
@@ -327,42 +400,120 @@ export default function DashboardPage() {
           )}
         </section>
 
-        {/* Services Section */}
+        {/* ── Services Section ── */}
         {profileExists && (
           <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
                 Services
               </h2>
-              <button
-                onClick={handleAddService}
-                className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              >
-                + Add
-              </button>
+              {!showServiceForm && (
+                <button
+                  onClick={() => setShowServiceForm(true)}
+                  className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                >
+                  + Add service
+                </button>
+              )}
             </div>
-            {services.length === 0 ? (
-              <p className="text-sm text-zinc-400">No services yet.</p>
+
+            {showServiceForm && (
+              <div className="mb-4 space-y-3 rounded-lg border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <input
+                  placeholder="Service title *"
+                  value={serviceForm.title}
+                  onChange={(e) =>
+                    setServiceForm({ ...serviceForm, title: e.target.value })
+                  }
+                  className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+                <textarea
+                  placeholder="Description (optional)"
+                  value={serviceForm.description}
+                  onChange={(e) =>
+                    setServiceForm({ ...serviceForm, description: e.target.value })
+                  }
+                  rows={2}
+                  className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+                <div className="flex gap-3">
+                  <input
+                    type="number"
+                    placeholder="Price"
+                    value={serviceForm.price}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, price: e.target.value })
+                    }
+                    className="w-28 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  />
+                  <select
+                    value={serviceForm.currency}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, currency: e.target.value })
+                    }
+                    className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  >
+                    <option value="PLN">PLN</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                  </select>
+                  <input
+                    placeholder="e.g. / hour"
+                    value={serviceForm.priceLabel}
+                    onChange={(e) =>
+                      setServiceForm({ ...serviceForm, priceLabel: e.target.value })
+                    }
+                    className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddService}
+                    className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    Add service
+                  </button>
+                  <button
+                    onClick={() => setShowServiceForm(false)}
+                    className="rounded px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {services.length === 0 && !showServiceForm ? (
+              <p className="text-sm text-zinc-400">
+                No services yet. Add your first service to show clients what you offer.
+              </p>
             ) : (
               <ul className="space-y-3">
                 {services.map((s) => (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded border border-zinc-100 px-4 py-3 dark:border-zinc-800"
+                    className="flex items-start justify-between rounded-lg border border-zinc-100 px-4 py-3 dark:border-zinc-800"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-zinc-900 dark:text-white">
                         {s.title}
                       </p>
                       {s.description && (
-                        <p className="text-sm text-zinc-500">{s.description}</p>
+                        <p className="mt-0.5 text-sm text-zinc-500">
+                          {s.description}
+                        </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      {s.price && (
+                    <div className="ml-4 flex shrink-0 items-center gap-3">
+                      {s.price != null && (
                         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                           {s.price} {s.currency}
-                          {s.priceLabel && ` ${s.priceLabel}`}
+                          {s.priceLabel && (
+                            <span className="font-normal text-zinc-400">
+                              {" "}
+                              {s.priceLabel}
+                            </span>
+                          )}
                         </span>
                       )}
                       <button
@@ -379,38 +530,98 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* Links Section */}
+        {/* ── Links Section ── */}
         {profileExists && (
           <section className="rounded-lg border border-zinc-200 p-6 dark:border-zinc-800">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Links
+                Social Links
               </h2>
-              <button
-                onClick={handleAddLink}
-                className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-              >
-                + Add
-              </button>
+              {!showLinkForm && (
+                <button
+                  onClick={() => setShowLinkForm(true)}
+                  className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                >
+                  + Add link
+                </button>
+              )}
             </div>
-            {links.length === 0 ? (
-              <p className="text-sm text-zinc-400">No links yet.</p>
+
+            {showLinkForm && (
+              <div className="mb-4 space-y-3 rounded-lg border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <select
+                  value={linkForm.platform}
+                  onChange={(e) =>
+                    setLinkForm({ ...linkForm, platform: e.target.value })
+                  }
+                  className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                >
+                  {PLATFORMS.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  placeholder="Label (optional — defaults to platform name)"
+                  value={linkForm.label}
+                  onChange={(e) =>
+                    setLinkForm({ ...linkForm, label: e.target.value })
+                  }
+                  className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+                <input
+                  placeholder="URL *"
+                  value={linkForm.url}
+                  onChange={(e) =>
+                    setLinkForm({ ...linkForm, url: e.target.value })
+                  }
+                  className="w-full rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAddLink}
+                    className="rounded bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    Add link
+                  </button>
+                  <button
+                    onClick={() => setShowLinkForm(false)}
+                    className="rounded px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {links.length === 0 && !showLinkForm ? (
+              <p className="text-sm text-zinc-400">
+                No links yet. Add your social profiles so people can find you.
+              </p>
             ) : (
               <ul className="space-y-3">
                 {links.map((l) => (
                   <li
                     key={l.id}
-                    className="flex items-center justify-between rounded border border-zinc-100 px-4 py-3 dark:border-zinc-800"
+                    className="flex items-center justify-between rounded-lg border border-zinc-100 px-4 py-3 dark:border-zinc-800"
                   >
-                    <div>
-                      <p className="font-medium text-zinc-900 dark:text-white">
-                        {l.label}
-                      </p>
-                      <p className="text-sm text-zinc-500">{l.url}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                        {(l.iconName ?? l.label).slice(0, 2).toUpperCase()}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-zinc-900 dark:text-white">
+                          {l.label}
+                        </p>
+                        <p className="truncate text-sm text-zinc-500">
+                          {l.url}
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={() => handleDeleteLink(l.id)}
-                      className="text-sm text-red-500 hover:text-red-700"
+                      className="ml-4 shrink-0 text-sm text-red-500 hover:text-red-700"
                     >
                       Delete
                     </button>
