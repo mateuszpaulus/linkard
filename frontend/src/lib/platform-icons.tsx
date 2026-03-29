@@ -1,3 +1,21 @@
+export const PLATFORM_META: Record<
+  string,
+  { bg: string; text: string; gradient?: string }
+> = {
+  linkedin: { bg: "bg-[#0A66C2]", text: "text-white" },
+  github: { bg: "bg-[#24292f]", text: "text-white" },
+  instagram: {
+    bg: "bg-transparent",
+    text: "text-white",
+    gradient:
+      "linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)",
+  },
+  twitter: { bg: "bg-black", text: "text-white" },
+  tiktok: { bg: "bg-[#010101]", text: "text-white" },
+  youtube: { bg: "bg-[#FF0000]", text: "text-white" },
+  dribbble: { bg: "bg-[#EA4C89]", text: "text-white" },
+};
+
 export const PLATFORM_ICONS: Record<string, React.ReactNode> = {
   linkedin: (
     <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
@@ -47,4 +65,20 @@ export function PlatformIcon({
     return <>{PLATFORM_ICONS[name]}</>;
   }
   return <span className="text-xs font-bold">{fallback}</span>;
+}
+
+export function platformIconStyle(name: string | null): {
+  className: string;
+  style?: React.CSSProperties;
+} {
+  if (!name) return { className: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300" };
+  const meta = PLATFORM_META[name];
+  if (!meta) return { className: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300" };
+  if (meta.gradient) {
+    return {
+      className: `${meta.text}`,
+      style: { background: meta.gradient },
+    };
+  }
+  return { className: `${meta.bg} ${meta.text}` };
 }

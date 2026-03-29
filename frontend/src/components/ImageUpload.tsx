@@ -49,7 +49,13 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image must be smaller than 2 MB");
+      e.target.value = "";
+      return;
+    }
+    handleFile(file);
   }
 
   return (

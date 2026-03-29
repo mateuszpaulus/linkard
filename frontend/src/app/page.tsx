@@ -98,7 +98,7 @@ export default function Home() {
                 Create your profile for free
               </Link>
               <Link
-                href="/mateusz"
+                href="/mateuszpaulus"
                 className="rounded-full border border-zinc-300 px-8 py-3.5 text-base font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-white dark:hover:bg-zinc-800"
               >
                 See an example
@@ -243,6 +243,7 @@ export default function Home() {
               Sign in
             </Link>
           </div>
+          <p className="text-sm text-zinc-400">Made with ❤️ by Linkard</p>
         </div>
       </footer>
     </div>
