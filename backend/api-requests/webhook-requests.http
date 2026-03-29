@@ -1,0 +1,36 @@
+### Variables
+@baseUrl = http://localhost:8080
+
+
+### ==========================================
+### CLERK WEBHOOKS
+### ==========================================
+
+### Simulate user.created event
+POST {{baseUrl}}/api/webhooks/clerk
+Content-Type: application/json
+
+{
+  "type": "user.created",
+  "data": {
+    "id": "user_test_123",
+    "email_addresses": [
+      {
+        "email_address": "jan@example.com"
+      }
+    ]
+  }
+}
+
+###
+
+### Simulate unknown event (should be ignored)
+POST {{baseUrl}}/api/webhooks/clerk
+Content-Type: application/json
+
+{
+  "type": "user.updated",
+  "data": {
+    "id": "user_test_123"
+  }
+}
