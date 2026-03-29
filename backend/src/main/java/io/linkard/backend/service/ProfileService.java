@@ -4,6 +4,9 @@ import io.linkard.backend.dto.*;
 import io.linkard.backend.entity.*;
 import io.linkard.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +23,16 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final ServiceRepository serviceRepository;
     private final LinkRepository linkRepository;
+    private final EmailService emailService;
 
+    @Value("${app.base-url:https://linkard-io.vercel.app}")
+    private String baseUrl;
+
+    @Transactional
     public ProfileResponse getPublicProfile(String username) {
         Profile profile = profileRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
+        profile.setViewCount((profile.getViewCount() == null ? 0L : profile.getViewCount()) + 1);
         return toResponse(profile);
     }
 
@@ -33,6 +42,21 @@ public class ProfileService {
         return profileRepository.findByUserClerkId(clerkId)
                 .map(this::toResponse)
                 .orElse(emptyProfileResponse());
+    }
+
+    @Transactional(readOnly = true)
+    public StatsResponse getMyStats(String clerkId) {
+        return profileRepository.findByUserClerkId(clerkId).map(profile -> {
+            long services = profile.getServices().stream().filter(io.linkard.backend.entity.Service::isActive).count();
+            long links = profile.getLinks().stream().filter(Link::isActive).count();
+            String profileUrl = baseUrl + "/" + profile.getUsername();
+            return new StatsResponse(
+                    profile.getViewCount() == null ? 0L : profile.getViewCount(),
+                    (int) services,
+                    (int) links,
+                    profileUrl
+            );
+        }).orElse(new StatsResponse(0L, 0, 0, null));
     }
 
     public List<ServiceResponse> getMyServices(String clerkId) {
@@ -47,6 +71,13 @@ public class ProfileService {
                 .map(p -> linkRepository.findByProfileIdOrderByDisplayOrderAsc(p.getId())
                         .stream().map(this::toLinkResponse).toList())
                 .orElse(List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProfileSummaryResponse> getPublicProfiles(int page, int size) {
+        int safeSize = Math.min(size, 24);
+        return profileRepository.findByDisplayNameIsNotNullOrderByCreatedAtDesc(PageRequest.of(page, safeSize))
+                .map(this::toSummaryResponse);
     }
 
     private User ensureUserExists(String clerkId) {
@@ -110,6 +141,21 @@ public class ProfileService {
     }
 
     @Transactional
+    public ServiceResponse updateService(String clerkId, UUID serviceId, ServiceRequest request) {
+        io.linkard.backend.entity.Service service = serviceRepository.findById(serviceId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
+        if (!service.getProfile().getUser().getClerkId().equals(clerkId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        if (request.title() != null) service.setTitle(request.title());
+        if (request.description() != null) service.setDescription(request.description());
+        if (request.price() != null) service.setPrice(request.price());
+        if (request.currency() != null) service.setCurrency(request.currency());
+        if (request.priceLabel() != null) service.setPriceLabel(request.priceLabel());
+        return toServiceResponse(serviceRepository.save(service));
+    }
+
+    @Transactional
     public void deleteService(String clerkId, UUID serviceId) {
         io.linkard.backend.entity.Service service = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
@@ -135,6 +181,19 @@ public class ProfileService {
     }
 
     @Transactional
+    public LinkResponse updateLink(String clerkId, UUID linkId, LinkRequest request) {
+        Link link = linkRepository.findById(linkId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link not found"));
+        if (!link.getProfile().getUser().getClerkId().equals(clerkId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+        if (request.label() != null) link.setLabel(request.label());
+        if (request.url() != null) link.setUrl(request.url());
+        if (request.iconName() != null) link.setIconName(request.iconName());
+        return toLinkResponse(linkRepository.save(link));
+    }
+
+    @Transactional
     public void deleteLink(String clerkId, UUID linkId) {
         Link link = linkRepository.findById(linkId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link not found"));
@@ -142,6 +201,23 @@ public class ProfileService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
         linkRepository.delete(link);
+    }
+
+    @Transactional(readOnly = true)
+    public void sendContact(String username, ContactRequest request) {
+        Profile profile = profileRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
+        String ownerEmail = profile.getUser().getEmail();
+        if (ownerEmail == null || ownerEmail.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Owner email not set");
+        }
+        emailService.sendContactEmail(
+                ownerEmail,
+                profile.getDisplayName() != null ? profile.getDisplayName() : profile.getUsername(),
+                request.name(),
+                request.email(),
+                request.message()
+        );
     }
 
     private ProfileResponse toResponse(Profile profile) {
@@ -163,6 +239,19 @@ public class ProfileService {
                 profile.getWebsiteUrl(),
                 services,
                 links
+        );
+    }
+
+    private ProfileSummaryResponse toSummaryResponse(Profile profile) {
+        int servicesCount = (int) profile.getServices().stream()
+                .filter(io.linkard.backend.entity.Service::isActive).count();
+        return new ProfileSummaryResponse(
+                profile.getId(),
+                profile.getUsername(),
+                profile.getDisplayName(),
+                profile.getBio(),
+                profile.getAvatarUrl(),
+                servicesCount
         );
     }
 

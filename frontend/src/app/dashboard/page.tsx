@@ -7,15 +7,19 @@ import {
   getMyProfile,
   createProfile,
   updateProfile,
+  getMyStats,
   getMyServices,
   addService,
+  updateService,
   deleteService,
   getMyLinks,
   addLink,
+  updateLink,
   deleteLink,
   type ProfileResponse,
   type ServiceResponse,
   type LinkResponse,
+  type StatsResponse,
 } from "@/lib/api";
 import { ImageUpload } from "@/components/ImageUpload";
 
@@ -33,7 +37,7 @@ const PLATFORMS = [
   { value: "other", label: "Other" },
 ];
 
-type Tab = "profile" | "services" | "links" | "preview";
+type Tab = "profile" | "services" | "links" | "stats" | "preview";
 
 function hasProfile(p: ProfileResponse | null): boolean {
   return p !== null && p.username !== null && p.username !== "";
@@ -47,6 +51,7 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [services, setServices] = useState<ServiceResponse[]>([]);
   const [links, setLinks] = useState<LinkResponse[]>([]);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -63,6 +68,7 @@ export default function DashboardPage() {
     websiteUrl: "",
   });
 
+  // Service forms
   const [serviceForm, setServiceForm] = useState({
     title: "",
     description: "",
@@ -71,9 +77,20 @@ export default function DashboardPage() {
     priceLabel: "",
   });
   const [showServiceForm, setShowServiceForm] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [editServiceForm, setEditServiceForm] = useState({
+    title: "",
+    description: "",
+    price: "",
+    currency: "PLN",
+    priceLabel: "",
+  });
 
+  // Link forms
   const [linkForm, setLinkForm] = useState({ platform: "linkedin", label: "", url: "" });
   const [showLinkForm, setShowLinkForm] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [editLinkForm, setEditLinkForm] = useState({ platform: "linkedin", label: "", url: "" });
 
   useEffect(() => {
     loadData();
@@ -94,15 +111,29 @@ export default function DashboardPage() {
           location: p.location ?? "",
           websiteUrl: p.websiteUrl ?? "",
         });
-        const [s, l] = await Promise.all([getMyServices(token), getMyLinks(token)]);
+        const [s, l, st] = await Promise.all([
+          getMyServices(token),
+          getMyLinks(token),
+          getMyStats(token),
+        ]);
         setServices(s);
         setLinks(l);
+        setStats(st);
       }
     } catch {
       // no profile yet
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshStats() {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const st = await getMyStats(token);
+      setStats(st);
+    } catch { /* ignore */ }
   }
 
   function handleUsernameChange(value: string) {
@@ -154,8 +185,38 @@ export default function DashboardPage() {
       setServices((prev) => [...prev, s]);
       setServiceForm({ title: "", description: "", price: "", currency: "PLN", priceLabel: "" });
       setShowServiceForm(false);
+      refreshStats();
     } catch {
       setError("Błąd dodawania usługi");
+    }
+  }
+
+  function startEditService(s: ServiceResponse) {
+    setEditingServiceId(s.id);
+    setEditServiceForm({
+      title: s.title,
+      description: s.description ?? "",
+      price: s.price != null ? String(s.price) : "",
+      currency: s.currency,
+      priceLabel: s.priceLabel ?? "",
+    });
+  }
+
+  async function handleUpdateService(id: string) {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const updated = await updateService(token, id, {
+        title: editServiceForm.title,
+        description: editServiceForm.description || undefined,
+        price: editServiceForm.price ? parseFloat(editServiceForm.price) : undefined,
+        currency: editServiceForm.currency,
+        priceLabel: editServiceForm.priceLabel || undefined,
+      });
+      setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
+      setEditingServiceId(null);
+    } catch {
+      setError("Błąd zapisu usługi");
     }
   }
 
@@ -165,6 +226,7 @@ export default function DashboardPage() {
     try {
       await deleteService(token, id);
       setServices((prev) => prev.filter((s) => s.id !== id));
+      refreshStats();
     } catch {
       setError("Błąd usuwania usługi");
     }
@@ -180,8 +242,34 @@ export default function DashboardPage() {
       setLinks((prev) => [...prev, l]);
       setLinkForm({ platform: "linkedin", label: "", url: "" });
       setShowLinkForm(false);
+      refreshStats();
     } catch {
       setError("Błąd dodawania linku");
+    }
+  }
+
+  function startEditLink(l: LinkResponse) {
+    setEditingLinkId(l.id);
+    setEditLinkForm({
+      platform: l.iconName ?? "other",
+      label: l.label,
+      url: l.url,
+    });
+  }
+
+  async function handleUpdateLink(id: string) {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const updated = await updateLink(token, id, {
+        label: editLinkForm.label,
+        url: editLinkForm.url,
+        iconName: editLinkForm.platform,
+      });
+      setLinks((prev) => prev.map((l) => (l.id === id ? updated : l)));
+      setEditingLinkId(null);
+    } catch {
+      setError("Błąd zapisu linku");
     }
   }
 
@@ -191,6 +279,7 @@ export default function DashboardPage() {
     try {
       await deleteLink(token, id);
       setLinks((prev) => prev.filter((l) => l.id !== id));
+      refreshStats();
     } catch {
       setError("Błąd usuwania linku");
     }
@@ -210,6 +299,7 @@ export default function DashboardPage() {
     { id: "profile", label: "Profil", icon: "👤" },
     { id: "services", label: "Usługi", icon: "💼" },
     { id: "links", label: "Linki", icon: "🔗" },
+    { id: "stats", label: "Statystyki", icon: "📊" },
     { id: "preview", label: "Podgląd", icon: "👁" },
   ];
 
@@ -334,7 +424,7 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                {/* Bio z licznikiem */}
+                {/* Bio */}
                 <div>
                   <div className="mb-1.5 flex items-center justify-between">
                     <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bio</label>
@@ -469,31 +559,101 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {services.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-start justify-between rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-zinc-900 dark:text-white">{s.title}</p>
-                      {s.description && (
-                        <p className="mt-0.5 text-sm text-zinc-500">{s.description}</p>
-                      )}
-                      {s.price != null && (
-                        <span className="mt-2 inline-block rounded-lg bg-indigo-50 px-2.5 py-0.5 text-sm font-semibold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
-                          {s.price} {s.currency}
-                          {s.priceLabel && <span className="ml-1 font-normal text-indigo-400">{s.priceLabel}</span>}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteService(s.id)}
-                      className="ml-4 shrink-0 text-sm text-red-500 hover:text-red-700"
+                {services.map((s) =>
+                  editingServiceId === s.id ? (
+                    <div
+                      key={s.id}
+                      className="rounded-xl border border-indigo-200 bg-white p-5 dark:border-indigo-800 dark:bg-zinc-900"
                     >
-                      Usuń
-                    </button>
-                  </div>
-                ))}
+                      <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Edytuj usługę</h3>
+                      <div className="space-y-3">
+                        <input
+                          placeholder="Tytuł usługi *"
+                          value={editServiceForm.title}
+                          onChange={(e) => setEditServiceForm((f) => ({ ...f, title: e.target.value }))}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        />
+                        <textarea
+                          placeholder="Opis (opcjonalnie)"
+                          value={editServiceForm.description}
+                          onChange={(e) => setEditServiceForm((f) => ({ ...f, description: e.target.value }))}
+                          rows={2}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        />
+                        <div className="flex gap-3">
+                          <input
+                            type="number"
+                            placeholder="Cena"
+                            value={editServiceForm.price}
+                            onChange={(e) => setEditServiceForm((f) => ({ ...f, price: e.target.value }))}
+                            className="w-28 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                          />
+                          <select
+                            value={editServiceForm.currency}
+                            onChange={(e) => setEditServiceForm((f) => ({ ...f, currency: e.target.value }))}
+                            className="rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                          >
+                            <option value="PLN">PLN</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                          </select>
+                          <input
+                            placeholder="np. / godz."
+                            value={editServiceForm.priceLabel}
+                            onChange={(e) => setEditServiceForm((f) => ({ ...f, priceLabel: e.target.value }))}
+                            className="flex-1 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdateService(s.id)}
+                            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                          >
+                            Zapisz
+                          </button>
+                          <button
+                            onClick={() => setEditingServiceId(null)}
+                            className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={s.id}
+                      className="flex items-start justify-between rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-zinc-900 dark:text-white">{s.title}</p>
+                        {s.description && (
+                          <p className="mt-0.5 text-sm text-zinc-500">{s.description}</p>
+                        )}
+                        {s.price != null && (
+                          <span className="mt-2 inline-block rounded-lg bg-indigo-50 px-2.5 py-0.5 text-sm font-semibold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                            {s.price} {s.currency}
+                            {s.priceLabel && <span className="ml-1 font-normal text-indigo-400">{s.priceLabel}</span>}
+                          </span>
+                        )}
+                      </div>
+                      <div className="ml-4 flex shrink-0 gap-3">
+                        <button
+                          onClick={() => startEditService(s)}
+                          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        >
+                          Edytuj
+                        </button>
+                        <button
+                          onClick={() => handleDeleteService(s.id)}
+                          className="text-sm text-red-500 hover:text-red-700"
+                        >
+                          Usuń
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>
@@ -563,24 +723,143 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {links.map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-zinc-900 dark:text-white">{l.label}</p>
-                      <p className="truncate text-sm text-zinc-400">{l.url}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteLink(l.id)}
-                      className="ml-4 shrink-0 text-sm text-red-500 hover:text-red-700"
+                {links.map((l) =>
+                  editingLinkId === l.id ? (
+                    <div
+                      key={l.id}
+                      className="rounded-xl border border-indigo-200 bg-white p-5 dark:border-indigo-800 dark:bg-zinc-900"
                     >
-                      Usuń
+                      <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Edytuj link</h3>
+                      <div className="space-y-3">
+                        <select
+                          value={editLinkForm.platform}
+                          onChange={(e) => setEditLinkForm((f) => ({ ...f, platform: e.target.value }))}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        >
+                          {PLATFORMS.map((p) => (
+                            <option key={p.value} value={p.value}>{p.label}</option>
+                          ))}
+                        </select>
+                        <input
+                          placeholder="Etykieta"
+                          value={editLinkForm.label}
+                          onChange={(e) => setEditLinkForm((f) => ({ ...f, label: e.target.value }))}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        />
+                        <input
+                          placeholder="URL *"
+                          value={editLinkForm.url}
+                          onChange={(e) => setEditLinkForm((f) => ({ ...f, url: e.target.value }))}
+                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdateLink(l.id)}
+                            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                          >
+                            Zapisz
+                          </button>
+                          <button
+                            onClick={() => setEditingLinkId(null)}
+                            className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                          >
+                            Anuluj
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      key={l.id}
+                      className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-zinc-900 dark:text-white">{l.label}</p>
+                        <p className="truncate text-sm text-zinc-400">{l.url}</p>
+                      </div>
+                      <div className="ml-4 flex shrink-0 gap-3">
+                        <button
+                          onClick={() => startEditLink(l)}
+                          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        >
+                          Edytuj
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLink(l.id)}
+                          className="text-sm text-red-500 hover:text-red-700"
+                        >
+                          Usuń
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── TAB: Statystyki ── */}
+        {activeTab === "stats" && (
+          <div className="space-y-6">
+            {!profileExists ? (
+              <div className="rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
+                <p className="text-zinc-500">Najpierw zapisz profil, żeby zobaczyć statystyki.</p>
+                <button
+                  onClick={() => setActiveTab("profile")}
+                  className="mt-4 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                >
+                  Przejdź do Profilu →
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <StatCard
+                    label="Wyświetlenia profilu"
+                    value={stats?.viewCount ?? 0}
+                    icon="👁"
+                  />
+                  <StatCard
+                    label="Usługi"
+                    value={stats?.servicesCount ?? 0}
+                    icon="💼"
+                  />
+                  <StatCard
+                    label="Linki"
+                    value={stats?.linksCount ?? 0}
+                    icon="🔗"
+                  />
+                </div>
+
+                <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+                  <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Twój link</h3>
+                  <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
+                    <span className="flex-1 truncate text-sm text-zinc-600 dark:text-zinc-300">
+                      {stats?.profileUrl ?? profileUrl}
+                    </span>
+                    <button
+                      onClick={copyLink}
+                      className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                    >
+                      {copied ? "✓ Skopiowano!" : "Kopiuj"}
                     </button>
                   </div>
-                ))}
-              </div>
+                  <div className="mt-3">
+                    <a
+                      href={`/${profile!.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                    >
+                      Otwórz profil
+                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -648,6 +927,16 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+  return (
+    <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mb-2 text-2xl">{icon}</div>
+      <p className="text-3xl font-bold text-zinc-900 dark:text-white">{value.toLocaleString()}</p>
+      <p className="mt-1 text-sm text-zinc-500">{label}</p>
     </div>
   );
 }

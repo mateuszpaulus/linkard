@@ -46,6 +46,8 @@ public class Profile {
 
     private Instant updatedAt = Instant.now();
 
+    private Long viewCount = 0L;
+
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
     private List<Service> services = new ArrayList<>();

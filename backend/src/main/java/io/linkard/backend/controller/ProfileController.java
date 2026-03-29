@@ -4,6 +4,7 @@ import io.linkard.backend.dto.*;
 import io.linkard.backend.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -30,10 +31,28 @@ public class ProfileController {
         return jwt != null ? jwt.getClaimAsString("email") : LOCAL_TEST_EMAIL;
     }
 
+    // ── Public ──
+
     @GetMapping("/p/{username}")
     public ProfileResponse getPublicProfile(@PathVariable String username) {
         return profileService.getPublicProfile(username);
     }
+
+    @PostMapping("/p/{username}/contact")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void contact(@PathVariable String username,
+                        @Valid @RequestBody ContactRequest request) {
+        profileService.sendContact(username, request);
+    }
+
+    @GetMapping("/profiles")
+    public Page<ProfileSummaryResponse> listProfiles(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size) {
+        return profileService.getPublicProfiles(page, size);
+    }
+
+    // ── Authenticated ──
 
     @GetMapping("/me/profile")
     public ProfileResponse getMyProfile(@AuthenticationPrincipal Jwt jwt) {
@@ -53,6 +72,11 @@ public class ProfileController {
         return profileService.createOrUpdateProfile(clerkId(jwt), email(jwt), request);
     }
 
+    @GetMapping("/me/stats")
+    public StatsResponse getMyStats(@AuthenticationPrincipal Jwt jwt) {
+        return profileService.getMyStats(clerkId(jwt));
+    }
+
     @GetMapping("/me/services")
     public List<ServiceResponse> getMyServices(@AuthenticationPrincipal Jwt jwt) {
         return profileService.getMyServices(clerkId(jwt));
@@ -63,6 +87,13 @@ public class ProfileController {
     public ServiceResponse addService(@AuthenticationPrincipal Jwt jwt,
                                       @Valid @RequestBody ServiceRequest request) {
         return profileService.addService(clerkId(jwt), request);
+    }
+
+    @PatchMapping("/me/services/{id}")
+    public ServiceResponse updateService(@AuthenticationPrincipal Jwt jwt,
+                                         @PathVariable UUID id,
+                                         @RequestBody ServiceRequest request) {
+        return profileService.updateService(clerkId(jwt), id, request);
     }
 
     @DeleteMapping("/me/services/{id}")
@@ -81,6 +112,13 @@ public class ProfileController {
     public LinkResponse addLink(@AuthenticationPrincipal Jwt jwt,
                                 @Valid @RequestBody LinkRequest request) {
         return profileService.addLink(clerkId(jwt), request);
+    }
+
+    @PatchMapping("/me/links/{id}")
+    public LinkResponse updateLink(@AuthenticationPrincipal Jwt jwt,
+                                   @PathVariable UUID id,
+                                   @RequestBody LinkRequest request) {
+        return profileService.updateLink(clerkId(jwt), id, request);
     }
 
     @DeleteMapping("/me/links/{id}")

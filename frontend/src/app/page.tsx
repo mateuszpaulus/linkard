@@ -83,12 +83,20 @@ export default function Home() {
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           {isSignedIn ? (
-            <Link
-              href="/dashboard"
-              className="rounded-full bg-zinc-900 px-8 py-3.5 text-base font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Go to Dashboard
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                className="rounded-full bg-zinc-900 px-8 py-3.5 text-base font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Go to Dashboard
+              </Link>
+              <Link
+                href="/explore"
+                className="rounded-full border border-zinc-300 px-8 py-3.5 text-base font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-white dark:hover:bg-zinc-800"
+              >
+                Explore profiles
+              </Link>
+            </>
           ) : (
             <>
               <Link
@@ -98,10 +106,10 @@ export default function Home() {
                 Create your profile for free
               </Link>
               <Link
-                href="/mateuszpaulus"
+                href="/explore"
                 className="rounded-full border border-zinc-300 px-8 py-3.5 text-base font-medium text-zinc-900 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-white dark:hover:bg-zinc-800"
               >
-                See an example
+                Explore profiles
               </Link>
             </>
           )}
@@ -236,6 +244,9 @@ export default function Home() {
             Linkard
           </span>
           <div className="flex gap-6 text-sm text-zinc-500">
+            <Link href="/explore" className="hover:text-zinc-900 dark:hover:text-white">
+              Explore
+            </Link>
             <Link href="/sign-up" className="hover:text-zinc-900 dark:hover:text-white">
               Sign up
             </Link>

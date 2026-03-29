@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getPublicProfile, type ProfileResponse } from "@/lib/api";
 import { PlatformIcon, platformIconStyle } from "@/lib/platform-icons";
+import { ContactModal } from "@/components/ContactModal";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -212,16 +213,7 @@ export default async function PublicProfilePage({ params }: Props) {
 
         {/* ── Kontakt ── */}
         <div className="fade-in fade-in-4 space-y-4 text-center">
-          <a
-            href={`mailto:?subject=Cześć ${profile.displayName ?? profile.username}!`}
-            className="inline-flex items-center gap-2 rounded-full bg-zinc-900 px-8 py-3 font-medium text-white shadow-sm transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-              <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
-              <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
-            </svg>
-            Skontaktuj się
-          </a>
+          <ContactModal username={profile.username} displayName={profile.displayName} />
 
           <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
             <a
