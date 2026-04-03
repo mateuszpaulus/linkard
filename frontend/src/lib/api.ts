@@ -1,3 +1,21 @@
+import type {
+  ProfileResponse,
+  ProfileRequest,
+  StatsResponse,
+  ServiceResponse,
+  ServiceRequest,
+  LinkResponse,
+  LinkRequest,
+  ContactRequest,
+  ProfilesPage,
+  AvailabilityDay,
+  AvailabilityRequest,
+  BookingSlot,
+  BookingRequest,
+  BookingResponse,
+  CheckoutSessionResponse,
+} from "@/types";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 async function apiFetch<T>(
@@ -21,14 +39,15 @@ async function apiFetch<T>(
   });
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `API error: ${res.status} ${res.statusText}`);
   }
 
   if (res.status === 204) return undefined as T;
   return res.json();
 }
 
-// Public
+// ── Public ──
 export function getPublicProfile(username: string) {
   return apiFetch<ProfileResponse>(`/api/p/${username}`);
 }
@@ -44,7 +63,22 @@ export function getPublicProfiles(page = 0, size = 12) {
   return apiFetch<ProfilesPage>(`/api/profiles?page=${page}&size=${size}`);
 }
 
-// Authenticated
+export function getAvailableSlots(username: string, date: string) {
+  return apiFetch<BookingSlot[]>(`/api/p/${username}/slots?date=${date}`);
+}
+
+export function getAvailableDays(username: string, month: string) {
+  return apiFetch<string[]>(`/api/p/${username}/available-days?month=${month}`);
+}
+
+export function createBooking(username: string, data: BookingRequest) {
+  return apiFetch<BookingResponse>(`/api/p/${username}/bookings`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// ── Authenticated ──
 export function getMyProfile(token: string) {
   return apiFetch<ProfileResponse>("/api/me/profile", { token });
 }
@@ -123,86 +157,43 @@ export function deleteLink(token: string, id: string) {
   });
 }
 
-// Types
-export interface ProfileResponse {
-  id: string;
-  username: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  location: string | null;
-  websiteUrl: string | null;
-  services: ServiceResponse[];
-  links: LinkResponse[];
+// ── Booking / Availability ──
+export function getMyAvailability(token: string) {
+  return apiFetch<AvailabilityDay[]>("/api/me/availability", { token });
 }
 
-export interface ProfileRequest {
-  username: string;
-  displayName?: string;
-  bio?: string;
-  avatarUrl?: string;
-  location?: string;
-  websiteUrl?: string;
+export function updateMyAvailability(token: string, data: AvailabilityRequest) {
+  return apiFetch<AvailabilityDay[]>("/api/me/availability", {
+    method: "PUT",
+    token,
+    body: JSON.stringify(data),
+  });
 }
 
-export interface StatsResponse {
-  viewCount: number;
-  servicesCount: number;
-  linksCount: number;
-  profileUrl: string | null;
+export function getMyBookings(token: string, status?: string) {
+  const q = status ? `?status=${status}` : "";
+  return apiFetch<BookingResponse[]>(`/api/me/bookings${q}`, { token });
 }
 
-export interface ServiceResponse {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number | null;
-  currency: string;
-  priceLabel: string | null;
-  displayOrder: number;
+export function updateBookingStatus(token: string, id: string, status: "CONFIRMED" | "CANCELLED") {
+  return apiFetch<BookingResponse>(`/api/me/bookings/${id}/status`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ status }),
+  });
 }
 
-export interface ServiceRequest {
-  title: string;
-  description?: string;
-  price?: number;
-  currency?: string;
-  priceLabel?: string;
+// ── Stripe ──
+export function createCheckoutSession(token: string) {
+  return apiFetch<CheckoutSessionResponse>("/api/me/create-checkout-session", {
+    method: "POST",
+    token,
+  });
 }
 
-export interface LinkResponse {
-  id: string;
-  label: string;
-  url: string;
-  iconName: string | null;
-  displayOrder: number;
-}
-
-export interface LinkRequest {
-  label: string;
-  url: string;
-  iconName?: string;
-}
-
-export interface ContactRequest {
-  name: string;
-  email: string;
-  message: string;
-}
-
-export interface ProfileSummaryResponse {
-  id: string;
-  username: string;
-  displayName: string | null;
-  bio: string | null;
-  avatarUrl: string | null;
-  servicesCount: number;
-}
-
-export interface ProfilesPage {
-  content: ProfileSummaryResponse[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-  last: boolean;
+export function getCustomerPortalUrl(token: string) {
+  return apiFetch<{ url: string }>("/api/me/customer-portal", {
+    method: "POST",
+    token,
+  });
 }

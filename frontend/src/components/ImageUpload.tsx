@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface ImageUploadProps {
   currentUrl: string | null;
@@ -12,17 +13,19 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentUrl);
+  const [error, setError] = useState("");
 
   async function handleFile(file: File) {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
     if (!cloudName || !uploadPreset) {
-      console.error("Cloudinary env vars not configured");
+      setError("Konfiguracja uploadu nie jest gotowa.");
       return;
     }
 
     setUploading(true);
+    setError("");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -40,8 +43,8 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
       const url: string = data.secure_url;
       setPreview(url);
       onUploaded(url);
-    } catch (err) {
-      console.error("Upload error:", err);
+    } catch {
+      setError("Błąd uploadu. Spróbuj ponownie.");
     } finally {
       setUploading(false);
     }
@@ -51,7 +54,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      alert("Image must be smaller than 2 MB");
+      setError("Zdjęcie musi być mniejsze niż 2 MB.");
       e.target.value = "";
       return;
     }
@@ -64,7 +67,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="group relative h-24 w-24 overflow-hidden rounded-full focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 disabled:opacity-50"
+        className="group relative h-24 w-24 overflow-hidden rounded-full focus:outline-none focus:ring-2 focus:ring-[#3B82F6] focus:ring-offset-2 disabled:opacity-50"
       >
         {preview ? (
           <img
@@ -73,7 +76,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-zinc-900 text-2xl font-bold text-white dark:bg-zinc-100 dark:text-zinc-900">
+          <div className="flex h-full w-full items-center justify-center bg-[#3B82F6] text-2xl font-bold text-white">
             {initials}
           </div>
         )}
@@ -83,6 +86,11 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
           </svg>
         </div>
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <Spinner className="h-6 w-6 text-white" />
+          </div>
+        )}
       </button>
       <input
         ref={inputRef}
@@ -92,9 +100,12 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
         className="hidden"
       />
       {uploading && (
-        <p className="text-xs text-zinc-400">Uploading...</p>
+        <p className="text-xs text-[#6B7280]">Przesyłam...</p>
       )}
-      <p className="text-xs text-zinc-400">Click to change avatar</p>
+      {error && (
+        <p className="text-xs text-[#EF4444]">{error}</p>
+      )}
+      <p className="text-xs text-[#6B7280]">Kliknij aby zmienić zdjęcie</p>
     </div>
   );
 }

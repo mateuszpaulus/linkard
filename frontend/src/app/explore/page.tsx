@@ -2,37 +2,42 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getPublicProfiles, type ProfileSummaryResponse } from "@/lib/api";
-
-function usernameToColor(username: string): string {
-  let hash = 0;
-  for (let i = 0; i < username.length; i++) {
-    hash = username.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const palette = [
-    "#4f46e5", "#7c3aed", "#db2777", "#dc2626",
-    "#d97706", "#059669", "#0891b2", "#2563eb",
-  ];
-  return palette[Math.abs(hash) % palette.length];
-}
-
-function getInitials(name: string | null, username: string): string {
-  if (name) {
-    return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-  }
-  return username.slice(0, 2).toUpperCase();
-}
+import { getPublicProfiles } from "@/lib/api";
+import type { ProfileSummaryResponse } from "@/types";
+import { Header } from "@/components/ui/Header";
+import { Footer } from "@/components/ui/Footer";
+import { Avatar } from "@/components/ui/Avatar";
+import { Spinner } from "@/components/ui/Spinner";
+import { SkeletonCard } from "@/components/ui/SkeletonCard";
 
 export default function ExplorePage() {
   const [profiles, setProfiles] = useState<ProfileSummaryResponse[]>([]);
+  const [filtered, setFiltered] = useState<ProfileSummaryResponse[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     loadProfiles(0, true);
   }, []);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      setFiltered(profiles);
+    } else {
+      const q = search.toLowerCase();
+      setFiltered(
+        profiles.filter(
+          (p) =>
+            (p.displayName?.toLowerCase().includes(q)) ||
+            p.username.toLowerCase().includes(q) ||
+            (p.bio?.toLowerCase().includes(q))
+        )
+      );
+    }
+  }, [search, profiles]);
 
   async function loadProfiles(p: number, reset: boolean) {
     if (reset) setLoading(true);
@@ -55,96 +60,95 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950">
-      {/* Header */}
-      <header className="border-b border-zinc-100 px-6 py-5 dark:border-zinc-800">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
-            Linkard
-          </Link>
-          <Link
-            href="/sign-up"
-            className="rounded-full bg-zinc-900 px-5 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Stwórz profil
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#F9FAFB]">
+      <Header />
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-6xl px-4 py-12 lg:px-8">
+        {/* Hero */}
         <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-4xl">
-            Odkryj profile
+          <h1 className="text-3xl font-bold text-[#111827] md:text-4xl">
+            Odkryj specjalistów
           </h1>
-          <p className="mt-3 text-zinc-500">
+          <p className="mt-3 text-[#6B7280]">
             Znajdź specjalistów i poznaj ich ofertę.
           </p>
         </div>
 
+        {/* Search */}
+        <div className="mx-auto mb-10 max-w-md">
+          <input
+            type="text"
+            placeholder="Szukaj po nazwie lub branży..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-12 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm text-[#111827] outline-none focus:border-[#3B82F6] focus:ring-1 focus:ring-[#3B82F6]"
+          />
+        </div>
+
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900" />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
-        ) : profiles.length === 0 ? (
-          <div className="py-20 text-center text-zinc-400">
-            Brak profili do wyświetlenia.
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center text-[#6B7280]">
+            {search ? "Brak wyników wyszukiwania." : "Brak profili do wyświetlenia."}
           </div>
         ) : (
           <>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {profiles.map((p) => (
+              {filtered.map((p) => (
                 <Link
                   key={p.id}
                   href={`/${p.username}`}
-                  className="group rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                  className="group rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md"
                 >
                   <div className="flex items-start gap-4">
-                    {p.avatarUrl ? (
-                      <img
-                        src={p.avatarUrl}
-                        alt={p.displayName ?? p.username}
-                        className="h-14 w-14 shrink-0 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-bold text-white"
-                        style={{ backgroundColor: usernameToColor(p.username) }}
-                      >
-                        {getInitials(p.displayName, p.username)}
-                      </div>
-                    )}
+                    <Avatar
+                      src={p.avatarUrl}
+                      name={p.displayName}
+                      username={p.username}
+                      size={56}
+                    />
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-zinc-900 group-hover:text-indigo-600 dark:text-white dark:group-hover:text-indigo-400">
+                      <p className="font-semibold text-[#111827] group-hover:text-[#3B82F6]">
                         {p.displayName ?? p.username}
                       </p>
-                      <p className="text-sm text-zinc-400">@{p.username}</p>
+                      <p className="text-sm text-[#6B7280]">@{p.username}</p>
                     </div>
                   </div>
 
                   {p.bio && (
-                    <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-zinc-500">
+                    <p className="mt-4 line-clamp-2 text-sm leading-relaxed text-[#6B7280]">
                       {p.bio}
                     </p>
                   )}
 
-                  {p.servicesCount > 0 && (
-                    <div className="mt-4">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                  <div className="mt-4 flex items-center justify-between">
+                    {p.servicesCount > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-[#3B82F6]/10 px-2.5 py-1 text-xs font-medium text-[#3B82F6]">
                         💼 {p.servicesCount} {p.servicesCount === 1 ? "usługa" : p.servicesCount < 5 ? "usługi" : "usług"}
                       </span>
-                    </div>
-                  )}
+                    )}
+                    <span className="text-xs font-medium text-[#3B82F6] group-hover:underline">
+                      Zobacz profil →
+                    </span>
+                  </div>
                 </Link>
               ))}
             </div>
 
-            {hasMore && (
+            {hasMore && !search && (
               <div className="mt-10 flex justify-center">
                 <button
                   onClick={() => loadProfiles(page + 1, false)}
                   disabled={loadingMore}
-                  className="rounded-full border border-zinc-300 px-8 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="inline-flex h-11 items-center rounded-xl border border-gray-300 px-8 text-sm font-medium text-[#111827] hover:bg-gray-50 disabled:opacity-50"
                 >
+                  {loadingMore ? (
+                    <Spinner className="mr-2 h-4 w-4 text-[#6B7280]" />
+                  ) : null}
                   {loadingMore ? "Ładuję..." : "Załaduj więcej"}
                 </button>
               </div>
@@ -152,6 +156,8 @@ export default function ExplorePage() {
           </>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }

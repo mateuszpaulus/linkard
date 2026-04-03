@@ -1,7 +1,7 @@
 "use client";
 
-import { useUser, useAuth, UserButton } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useUser, useAuth, SignOutButton } from "@clerk/nextjs";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   getMyProfile,
@@ -16,31 +16,60 @@ import {
   addLink,
   updateLink,
   deleteLink,
-  type ProfileResponse,
-  type ServiceResponse,
-  type LinkResponse,
-  type StatsResponse,
+  getMyAvailability,
+  updateMyAvailability,
+  getMyBookings,
+  updateBookingStatus,
+  createCheckoutSession,
+  getCustomerPortalUrl,
 } from "@/lib/api";
+import type {
+  ProfileResponse,
+  ServiceResponse,
+  LinkResponse,
+  StatsResponse,
+  AvailabilityDay,
+  BookingResponse,
+} from "@/types";
 import { ImageUpload } from "@/components/ImageUpload";
+import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
+import { Avatar } from "@/components/ui/Avatar";
+import { Modal } from "@/components/ui/Modal";
+import { Toast } from "@/components/ui/Toast";
 
 const USERNAME_REGEX = /^[a-z0-9-]{3,30}$/;
 const BIO_MAX = 160;
 
 const PLATFORMS = [
-  { value: "linkedin", label: "LinkedIn" },
-  { value: "github", label: "GitHub" },
-  { value: "instagram", label: "Instagram" },
-  { value: "twitter", label: "Twitter / X" },
-  { value: "youtube", label: "YouTube" },
-  { value: "tiktok", label: "TikTok" },
-  { value: "dribbble", label: "Dribbble" },
-  { value: "other", label: "Other" },
+  { value: "linkedin", label: "LinkedIn", icon: "💼" },
+  { value: "github", label: "GitHub", icon: "🐙" },
+  { value: "instagram", label: "Instagram", icon: "📸" },
+  { value: "twitter", label: "Twitter / X", icon: "🐦" },
+  { value: "youtube", label: "YouTube", icon: "▶️" },
+  { value: "tiktok", label: "TikTok", icon: "🎵" },
+  { value: "other", label: "Inne", icon: "🔗" },
 ];
 
-type Tab = "profile" | "services" | "links" | "stats" | "preview";
+const DAY_NAMES = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"];
+
+type Tab = "profile" | "services" | "links" | "booking" | "stats" | "plan";
+
+const NAV_ITEMS: { id: Tab; label: string; icon: string; proOnly?: boolean }[] = [
+  { id: "profile", label: "Profil", icon: "👤" },
+  { id: "services", label: "Usługi", icon: "🛠️" },
+  { id: "links", label: "Linki", icon: "🔗" },
+  { id: "booking", label: "Booking", icon: "📅", proOnly: true },
+  { id: "stats", label: "Statystyki", icon: "📊", proOnly: true },
+  { id: "plan", label: "Plan", icon: "💳" },
+];
 
 function hasProfile(p: ProfileResponse | null): boolean {
   return p !== null && p.username !== null && p.username !== "";
+}
+
+function getPlatformIcon(iconName: string | null): string {
+  return PLATFORMS.find((p) => p.value === iconName)?.icon ?? "🔗";
 }
 
 export default function DashboardPage() {
@@ -54,11 +83,12 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [error, setError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Profile form
   const [form, setForm] = useState({
     username: "",
     displayName: "",
@@ -68,35 +98,30 @@ export default function DashboardPage() {
     websiteUrl: "",
   });
 
-  // Service forms
-  const [serviceForm, setServiceForm] = useState({
-    title: "",
-    description: "",
-    price: "",
-    currency: "PLN",
-    priceLabel: "",
-  });
-  const [showServiceForm, setShowServiceForm] = useState(false);
-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
-  const [editServiceForm, setEditServiceForm] = useState({
-    title: "",
-    description: "",
-    price: "",
-    currency: "PLN",
-    priceLabel: "",
-  });
+  // Service modal
+  const [serviceModal, setServiceModal] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceResponse | null>(null);
+  const [serviceForm, setServiceForm] = useState({ title: "", description: "", price: "", currency: "PLN" });
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
 
-  // Link forms
-  const [linkForm, setLinkForm] = useState({ platform: "linkedin", label: "", url: "" });
-  const [showLinkForm, setShowLinkForm] = useState(false);
-  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
-  const [editLinkForm, setEditLinkForm] = useState({ platform: "linkedin", label: "", url: "" });
+  // Link modal
+  const [linkModal, setLinkModal] = useState(false);
+  const [editingLink, setEditingLink] = useState<LinkResponse | null>(null);
+  const [linkForm, setLinkForm] = useState({ platform: "linkedin", url: "" });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Booking
+  const [availability, setAvailability] = useState<AvailabilityDay[]>([]);
+  const [bookings, setBookings] = useState<BookingResponse[]>([]);
+  const [bookingTab, setBookingTab] = useState<"upcoming" | "history">("upcoming");
+  const [savingAvailability, setSavingAvailability] = useState(false);
 
-  async function loadData() {
+  // Plan
+  const [upgradingPlan, setUpgradingPlan] = useState(false);
+
+  const plan = profile?.plan ?? "FREE";
+  const isPro = plan === "PRO";
+
+  const loadData = useCallback(async () => {
     const token = await getToken();
     if (!token) return;
     try {
@@ -119,23 +144,32 @@ export default function DashboardPage() {
         setServices(s);
         setLinks(l);
         setStats(st);
+
+        if (p.plan === "PRO") {
+          try {
+            const [avail, bk] = await Promise.all([
+              getMyAvailability(token),
+              getMyBookings(token),
+            ]);
+            setAvailability(avail);
+            setBookings(bk);
+          } catch {
+            // booking features may not be set up yet
+          }
+        }
       }
     } catch {
       // no profile yet
     } finally {
       setLoading(false);
     }
-  }
+  }, [getToken]);
 
-  async function refreshStats() {
-    const token = await getToken();
-    if (!token) return;
-    try {
-      const st = await getMyStats(token);
-      setStats(st);
-    } catch { /* ignore */ }
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
+  // ── Profile handlers ──
   function handleUsernameChange(value: string) {
     const cleaned = value.toLowerCase().replace(/[^a-z0-9-]/g, "");
     setForm((f) => ({ ...f, username: cleaned }));
@@ -155,14 +189,12 @@ export default function DashboardPage() {
     if (!token) return;
     setSaving(true);
     setError("");
-    setSuccessMsg("");
     try {
       const saved = hasProfile(profile)
         ? await updateProfile(token, form)
         : await createProfile(token, form);
       setProfile(saved);
-      setSuccessMsg("Profil zapisany!");
-      setTimeout(() => setSuccessMsg(""), 4000);
+      setToast({ message: "Profil zapisany!", type: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Błąd zapisu");
     } finally {
@@ -170,51 +202,44 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleAddService() {
-    if (!serviceForm.title.trim()) return;
-    const token = await getToken();
-    if (!token) return;
-    try {
-      const s = await addService(token, {
-        title: serviceForm.title,
-        description: serviceForm.description || undefined,
-        price: serviceForm.price ? parseFloat(serviceForm.price) : undefined,
-        currency: serviceForm.currency,
-        priceLabel: serviceForm.priceLabel || undefined,
-      });
-      setServices((prev) => [...prev, s]);
-      setServiceForm({ title: "", description: "", price: "", currency: "PLN", priceLabel: "" });
-      setShowServiceForm(false);
-      refreshStats();
-    } catch {
-      setError("Błąd dodawania usługi");
-    }
+  // ── Service handlers ──
+  function openAddService() {
+    setEditingService(null);
+    setServiceForm({ title: "", description: "", price: "", currency: "PLN" });
+    setServiceModal(true);
   }
 
-  function startEditService(s: ServiceResponse) {
-    setEditingServiceId(s.id);
-    setEditServiceForm({
+  function openEditService(s: ServiceResponse) {
+    setEditingService(s);
+    setServiceForm({
       title: s.title,
       description: s.description ?? "",
       price: s.price != null ? String(s.price) : "",
       currency: s.currency,
-      priceLabel: s.priceLabel ?? "",
     });
+    setServiceModal(true);
   }
 
-  async function handleUpdateService(id: string) {
+  async function handleSaveService() {
+    if (!serviceForm.title.trim()) return;
     const token = await getToken();
     if (!token) return;
     try {
-      const updated = await updateService(token, id, {
-        title: editServiceForm.title,
-        description: editServiceForm.description || undefined,
-        price: editServiceForm.price ? parseFloat(editServiceForm.price) : undefined,
-        currency: editServiceForm.currency,
-        priceLabel: editServiceForm.priceLabel || undefined,
-      });
-      setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
-      setEditingServiceId(null);
+      const data = {
+        title: serviceForm.title,
+        description: serviceForm.description || undefined,
+        price: serviceForm.price ? parseFloat(serviceForm.price) : undefined,
+        currency: serviceForm.currency,
+      };
+      if (editingService) {
+        const updated = await updateService(token, editingService.id, data);
+        setServices((prev) => prev.map((s) => (s.id === editingService.id ? updated : s)));
+      } else {
+        const created = await addService(token, data);
+        setServices((prev) => [...prev, created]);
+      }
+      setServiceModal(false);
+      setToast({ message: editingService ? "Usługa zapisana!" : "Usługa dodana!", type: "success" });
     } catch {
       setError("Błąd zapisu usługi");
     }
@@ -226,48 +251,45 @@ export default function DashboardPage() {
     try {
       await deleteService(token, id);
       setServices((prev) => prev.filter((s) => s.id !== id));
-      refreshStats();
+      setDeletingServiceId(null);
+      setToast({ message: "Usługa usunięta", type: "success" });
     } catch {
       setError("Błąd usuwania usługi");
     }
   }
 
-  async function handleAddLink() {
+  // ── Link handlers ──
+  function openAddLink() {
+    setEditingLink(null);
+    setLinkForm({ platform: "linkedin", url: "" });
+    setLinkModal(true);
+  }
+
+  function openEditLink(l: LinkResponse) {
+    setEditingLink(l);
+    setLinkForm({ platform: l.iconName ?? "other", url: l.url });
+    setLinkModal(true);
+  }
+
+  async function handleSaveLink() {
     if (!linkForm.url.trim()) return;
     const token = await getToken();
     if (!token) return;
-    const label = linkForm.label.trim() || PLATFORMS.find((p) => p.value === linkForm.platform)?.label || "Link";
+    const label = PLATFORMS.find((p) => p.value === linkForm.platform)?.label ?? "Link";
     try {
-      const l = await addLink(token, { label, url: linkForm.url, iconName: linkForm.platform });
-      setLinks((prev) => [...prev, l]);
-      setLinkForm({ platform: "linkedin", label: "", url: "" });
-      setShowLinkForm(false);
-      refreshStats();
-    } catch {
-      setError("Błąd dodawania linku");
-    }
-  }
-
-  function startEditLink(l: LinkResponse) {
-    setEditingLinkId(l.id);
-    setEditLinkForm({
-      platform: l.iconName ?? "other",
-      label: l.label,
-      url: l.url,
-    });
-  }
-
-  async function handleUpdateLink(id: string) {
-    const token = await getToken();
-    if (!token) return;
-    try {
-      const updated = await updateLink(token, id, {
-        label: editLinkForm.label,
-        url: editLinkForm.url,
-        iconName: editLinkForm.platform,
-      });
-      setLinks((prev) => prev.map((l) => (l.id === id ? updated : l)));
-      setEditingLinkId(null);
+      if (editingLink) {
+        const updated = await updateLink(token, editingLink.id, {
+          label,
+          url: linkForm.url,
+          iconName: linkForm.platform,
+        });
+        setLinks((prev) => prev.map((l) => (l.id === editingLink.id ? updated : l)));
+      } else {
+        const created = await addLink(token, { label, url: linkForm.url, iconName: linkForm.platform });
+        setLinks((prev) => [...prev, created]);
+      }
+      setLinkModal(false);
+      setToast({ message: editingLink ? "Link zapisany!" : "Link dodany!", type: "success" });
     } catch {
       setError("Błąd zapisu linku");
     }
@@ -279,664 +301,832 @@ export default function DashboardPage() {
     try {
       await deleteLink(token, id);
       setLinks((prev) => prev.filter((l) => l.id !== id));
-      refreshStats();
     } catch {
       setError("Błąd usuwania linku");
     }
   }
 
+  // ── Booking handlers ──
+  function initAvailability(): AvailabilityDay[] {
+    return Array.from({ length: 7 }, (_, i) => ({
+      dayOfWeek: i,
+      enabled: i < 5,
+      startTime: "09:00",
+      endTime: "17:00",
+    }));
+  }
+
+  async function handleSaveAvailability() {
+    const token = await getToken();
+    if (!token) return;
+    setSavingAvailability(true);
+    try {
+      const saved = await updateMyAvailability(token, { days: availability });
+      setAvailability(saved);
+      setToast({ message: "Dostępność zapisana!", type: "success" });
+    } catch {
+      setError("Błąd zapisu dostępności");
+    } finally {
+      setSavingAvailability(false);
+    }
+  }
+
+  async function handleBookingAction(id: string, status: "CONFIRMED" | "CANCELLED") {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const updated = await updateBookingStatus(token, id, status);
+      setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+      setToast({ message: status === "CONFIRMED" ? "Rezerwacja potwierdzona!" : "Rezerwacja odrzucona", type: "success" });
+    } catch {
+      setError("Błąd aktualizacji rezerwacji");
+    }
+  }
+
+  // ── Plan handlers ──
+  async function handleUpgrade() {
+    const token = await getToken();
+    if (!token) return;
+    setUpgradingPlan(true);
+    try {
+      const { url } = await createCheckoutSession(token);
+      window.location.href = url;
+    } catch {
+      setError("Błąd tworzenia sesji płatności");
+      setUpgradingPlan(false);
+    }
+  }
+
+  async function handleManageSubscription() {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const { url } = await getCustomerPortalUrl(token);
+      window.location.href = url;
+    } catch {
+      setError("Błąd otwarcia portalu płatności");
+    }
+  }
+
   function copyLink() {
     if (!profile?.username) return;
-    navigator.clipboard.writeText(`https://linkard-io.vercel.app/${profile.username}`);
+    navigator.clipboard.writeText(`https://linkard.io/${profile.username}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const profileUrl = profile?.username ? `https://linkard-io.vercel.app/${profile.username}` : null;
-  const profileExists = hasProfile(profile);
-
-  const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: "profile", label: "Profil", icon: "👤" },
-    { id: "services", label: "Usługi", icon: "💼" },
-    { id: "links", label: "Linki", icon: "🔗" },
-    { id: "stats", label: "Statystyki", icon: "📊" },
-    { id: "preview", label: "Podgląd", icon: "👁" },
-  ];
+  const profileUrl = profile?.username ? `https://linkard.io/${profile.username}` : null;
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F9FAFB]">
+        <Spinner className="h-8 w-8 text-[#3B82F6]" />
       </div>
     );
   }
 
+  const canAddService = isPro || services.length < 3;
+  const canAddLink = isPro || links.length < 3;
+  const currentAvailability = availability.length > 0 ? availability : initAvailability();
+
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
-      {/* ── Header ── */}
-      <header className="border-b border-zinc-200 bg-white px-6 py-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
-            Linkard
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-zinc-500 sm:block">
-              {user?.primaryEmailAddress?.emailAddress}
-            </span>
-            <UserButton />
-          </div>
+    <div className="min-h-screen bg-[#F9FAFB]">
+      {toast && (
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+
+      {/* ── Sidebar (desktop) ── */}
+      <aside className="fixed left-0 top-0 hidden h-screen w-60 flex-col border-r border-gray-200 bg-white lg:flex">
+        <div className="border-b border-gray-200 px-6 py-5">
+          <Link href="/" className="text-xl font-bold text-[#3B82F6]">Linkard</Link>
         </div>
-      </header>
-
-      {/* ── Tabs ── */}
-      <div className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto max-w-4xl">
-          <nav className="flex">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 border-b-2 px-4 py-4 text-sm font-medium transition-colors sm:px-6 ${
-                  activeTab === tab.id
-                    ? "border-zinc-900 text-zinc-900 dark:border-white dark:text-white"
-                    : "border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                }`}
-              >
-                <span>{tab.icon}</span>
-                <span className="hidden sm:block">{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* ── Content ── */}
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        {/* Alerts */}
-        {successMsg && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950/50 dark:text-green-300">
-            ✓ {successMsg}
-          </div>
-        )}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300">
-            {error}
-            <button onClick={() => setError("")} className="ml-2 underline">usuń</button>
-          </div>
-        )}
-
-        {/* ── TAB: Profil ── */}
-        {activeTab === "profile" && (
-          <div className="space-y-6">
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="mb-6 text-lg font-semibold text-zinc-900 dark:text-white">
-                {profileExists ? "Twój profil" : "Stwórz profil"}
-              </h2>
-
-              <div className="space-y-5">
-                {/* Avatar */}
-                <ImageUpload
-                  currentUrl={form.avatarUrl || null}
-                  initials={
-                    form.displayName
-                      ? form.displayName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
-                      : form.username ? form.username.slice(0, 2).toUpperCase() : "?"
-                  }
-                  onUploaded={(url) => setForm((f) => ({ ...f, avatarUrl: url }))}
-                />
-
-                {/* Username */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Twój link
-                  </label>
-                  <div className="flex items-center overflow-hidden rounded-lg border border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-800">
-                    <span className="border-r border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900">
-                      linkard-io.vercel.app/
-                    </span>
-                    <input
-                      placeholder="twoj-username"
-                      value={form.username}
-                      onChange={(e) => handleUsernameChange(e.target.value)}
-                      className="flex-1 bg-transparent px-3 py-2.5 text-sm text-zinc-900 outline-none dark:text-white"
-                    />
-                  </div>
-                  {form.username && !usernameError && (
-                    <p className="mt-1.5 text-xs text-indigo-500">
-                      ✓ linkard-io.vercel.app/{form.username}
-                    </p>
-                  )}
-                  {usernameError && (
-                    <p className="mt-1.5 text-xs text-red-500">{usernameError}</p>
-                  )}
-                </div>
-
-                {/* Display name */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Imię i nazwisko
-                  </label>
-                  <input
-                    placeholder="np. Jan Kowalski"
-                    value={form.displayName}
-                    onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                </div>
-
-                {/* Bio */}
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Bio</label>
-                    <span className={`text-xs ${form.bio.length > BIO_MAX ? "text-red-500" : "text-zinc-400"}`}>
-                      {form.bio.length}/{BIO_MAX}
-                    </span>
-                  </div>
-                  <textarea
-                    placeholder="Opowiedz ludziom o sobie i tym co robisz..."
-                    value={form.bio}
-                    onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value.slice(0, BIO_MAX) }))}
-                    rows={3}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Lokalizacja
-                  </label>
-                  <input
-                    placeholder="np. Warszawa, Polska"
-                    value={form.location}
-                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                </div>
-
-                {/* Website */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Strona internetowa
-                  </label>
-                  <input
-                    placeholder="https://twojastrona.pl"
-                    value={form.websiteUrl}
-                    onChange={(e) => setForm((f) => ({ ...f, websiteUrl: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                </div>
-
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving || form.bio.length > BIO_MAX}
-                  className="rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  {saving ? "Zapisuję..." : "Zapisz profil"}
-                </button>
-              </div>
+        <div className="border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <Avatar
+              src={form.avatarUrl || null}
+              name={form.displayName || null}
+              username={form.username || "U"}
+              size={40}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-[#111827]">
+                {form.displayName || user?.firstName || "Użytkownik"}
+              </p>
+              <Badge plan={plan} />
             </div>
           </div>
-        )}
+        </div>
+        <nav className="flex-1 px-3 py-4">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`mb-1 flex h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-medium transition-colors ${
+                activeTab === item.id
+                  ? "bg-[#3B82F6]/10 text-[#3B82F6]"
+                  : "text-[#6B7280] hover:bg-gray-100"
+              }`}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+              {item.proOnly && !isPro && <span className="ml-auto text-xs">🔒</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="border-t border-gray-200 px-3 py-4">
+          <SignOutButton>
+            <button className="flex h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-medium text-[#EF4444] hover:bg-red-50">
+              Wyloguj
+            </button>
+          </SignOutButton>
+        </div>
+      </aside>
 
-        {/* ── TAB: Usługi ── */}
-        {activeTab === "services" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Usługi</h2>
-              {!showServiceForm && (
+      {/* ── Content ── */}
+      <main className="pb-24 lg:ml-60 lg:pb-8">
+        {/* Mobile header */}
+        <header className="border-b border-gray-200 bg-white px-4 py-4 lg:hidden">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="text-xl font-bold text-[#3B82F6]">Linkard</Link>
+            <div className="flex items-center gap-2">
+              <Badge plan={plan} />
+              <SignOutButton>
+                <button className="text-sm text-[#EF4444]">Wyloguj</button>
+              </SignOutButton>
+            </div>
+          </div>
+        </header>
+
+        <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-8">
+          {/* Error */}
+          {error && (
+            <div className="mb-6 rounded-xl bg-[#EF4444]/10 px-4 py-3 text-sm text-[#EF4444]">
+              {error}
+              <button onClick={() => setError("")} className="ml-2 underline">zamknij</button>
+            </div>
+          )}
+
+          {/* ── PROFILE TAB ── */}
+          {activeTab === "profile" && (
+            <div className="space-y-6">
+              <div className="rounded-xl bg-white p-6 shadow-sm">
+                <h2 className="mb-6 text-lg font-semibold text-[#111827]">
+                  {hasProfile(profile) ? "Twój profil" : "Stwórz profil"}
+                </h2>
+                <div className="space-y-5">
+                  <ImageUpload
+                    currentUrl={form.avatarUrl || null}
+                    initials={
+                      form.displayName
+                        ? form.displayName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+                        : form.username ? form.username.slice(0, 2).toUpperCase() : "?"
+                    }
+                    onUploaded={(url) => setForm((f) => ({ ...f, avatarUrl: url }))}
+                  />
+
+                  {/* Username */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#111827]">Twój link</label>
+                    <div className="flex items-center overflow-hidden rounded-xl border border-gray-300">
+                      <span className="border-r border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-[#6B7280]">
+                        linkard.io/
+                      </span>
+                      <input
+                        placeholder="twoj-username"
+                        value={form.username}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
+                        className="h-11 flex-1 bg-transparent px-3 text-sm text-[#111827] outline-none"
+                      />
+                    </div>
+                    {form.username && !usernameError && (
+                      <p className="mt-1.5 text-xs text-[#10B981]">✓ linkard.io/{form.username}</p>
+                    )}
+                    {usernameError && (
+                      <p className="mt-1.5 text-xs text-[#EF4444]">{usernameError}</p>
+                    )}
+                  </div>
+
+                  {/* Display name */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#111827]">Imię i nazwisko</label>
+                    <input
+                      placeholder="np. Jan Kowalski"
+                      value={form.displayName}
+                      onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+                      className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+                    />
+                  </div>
+
+                  {/* Bio */}
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <label className="text-sm font-medium text-[#111827]">Bio</label>
+                      <span className={`text-xs ${form.bio.length > BIO_MAX ? "text-[#EF4444]" : "text-[#6B7280]"}`}>
+                        {form.bio.length}/{BIO_MAX}
+                      </span>
+                    </div>
+                    <textarea
+                      placeholder="Opowiedz ludziom o sobie..."
+                      value={form.bio}
+                      onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value.slice(0, BIO_MAX) }))}
+                      rows={3}
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+                    />
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#111827]">Lokalizacja</label>
+                    <input
+                      placeholder="Warszawa, Polska"
+                      value={form.location}
+                      onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                      className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+                    />
+                  </div>
+
+                  {/* Website */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-[#111827]">Strona internetowa</label>
+                    <input
+                      placeholder="https://twojastrona.pl"
+                      value={form.websiteUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, websiteUrl: e.target.value }))}
+                      className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm text-[#111827] outline-none focus:border-[#3B82F6]"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving || form.bio.length > BIO_MAX}
+                    className="flex h-11 w-full items-center justify-center rounded-xl bg-[#3B82F6] text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50 sm:w-auto sm:px-8"
+                  >
+                    {saving ? <Spinner className="h-5 w-5 text-white" /> : "Zapisz profil"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Public link */}
+              {profileUrl && (
+                <div className="rounded-xl bg-white p-6 shadow-sm">
+                  <h3 className="mb-3 text-sm font-medium text-[#111827]">Twój publiczny link:</h3>
+                  <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <span className="flex-1 truncate text-sm text-[#3B82F6]">
+                      🔗 linkard.io/{profile!.username}
+                    </span>
+                    <button
+                      onClick={copyLink}
+                      className="shrink-0 rounded-lg bg-[#3B82F6] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#2563EB]"
+                    >
+                      {copied ? "Skopiowano! ✓" : "Kopiuj"}
+                    </button>
+                    <a
+                      href={`/${profile!.username}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-[#111827] hover:bg-gray-50"
+                    >
+                      Otwórz
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── SERVICES TAB ── */}
+          {activeTab === "services" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-[#111827]">
+                  Moje usługi{" "}
+                  <span className="text-sm font-normal text-[#6B7280]">
+                    {isPro ? services.length : `${services.length}/3`}
+                  </span>
+                </h2>
                 <button
-                  onClick={() => setShowServiceForm(true)}
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  onClick={openAddService}
+                  disabled={!canAddService}
+                  className="inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-5 text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50"
+                  title={!canAddService ? "Upgrade do Pro dla nieograniczonych usług" : undefined}
                 >
                   + Dodaj usługę
                 </button>
+              </div>
+              {!canAddService && (
+                <p className="text-sm text-[#F59E0B]">Upgrade do Pro dla nieograniczonych usług.</p>
               )}
-            </div>
 
-            {showServiceForm && (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-                <h3 className="mb-4 font-medium text-zinc-900 dark:text-white">Nowa usługa</h3>
-                <div className="space-y-3">
-                  <input
-                    placeholder="Tytuł usługi *"
-                    value={serviceForm.title}
-                    onChange={(e) => setServiceForm((f) => ({ ...f, title: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                  <textarea
-                    placeholder="Opis (opcjonalnie)"
-                    value={serviceForm.description}
-                    onChange={(e) => setServiceForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={2}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                  <div className="flex gap-3">
-                    <input
-                      type="number"
-                      placeholder="Cena"
-                      value={serviceForm.price}
-                      onChange={(e) => setServiceForm((f) => ({ ...f, price: e.target.value }))}
-                      className="w-28 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                    />
-                    <select
-                      value={serviceForm.currency}
-                      onChange={(e) => setServiceForm((f) => ({ ...f, currency: e.target.value }))}
-                      className="rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                    >
-                      <option value="PLN">PLN</option>
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                    </select>
-                    <input
-                      placeholder="np. / godz."
-                      value={serviceForm.priceLabel}
-                      onChange={(e) => setServiceForm((f) => ({ ...f, priceLabel: e.target.value }))}
-                      className="flex-1 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAddService}
-                      className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
-                    >
-                      Dodaj
-                    </button>
-                    <button
-                      onClick={() => setShowServiceForm(false)}
-                      className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                    >
-                      Anuluj
-                    </button>
-                  </div>
+              {services.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed border-gray-300 p-10 text-center">
+                  <p className="text-sm text-[#6B7280]">Brak usług. Dodaj pierwszą usługę.</p>
                 </div>
-              </div>
-            )}
-
-            {services.length === 0 && !showServiceForm ? (
-              <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
-                <p className="text-sm text-zinc-400">Brak usług. Dodaj pierwszą usługę.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {services.map((s) =>
-                  editingServiceId === s.id ? (
-                    <div
-                      key={s.id}
-                      className="rounded-xl border border-indigo-200 bg-white p-5 dark:border-indigo-800 dark:bg-zinc-900"
-                    >
-                      <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Edytuj usługę</h3>
-                      <div className="space-y-3">
-                        <input
-                          placeholder="Tytuł usługi *"
-                          value={editServiceForm.title}
-                          onChange={(e) => setEditServiceForm((f) => ({ ...f, title: e.target.value }))}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        />
-                        <textarea
-                          placeholder="Opis (opcjonalnie)"
-                          value={editServiceForm.description}
-                          onChange={(e) => setEditServiceForm((f) => ({ ...f, description: e.target.value }))}
-                          rows={2}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        />
-                        <div className="flex gap-3">
-                          <input
-                            type="number"
-                            placeholder="Cena"
-                            value={editServiceForm.price}
-                            onChange={(e) => setEditServiceForm((f) => ({ ...f, price: e.target.value }))}
-                            className="w-28 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                          />
-                          <select
-                            value={editServiceForm.currency}
-                            onChange={(e) => setEditServiceForm((f) => ({ ...f, currency: e.target.value }))}
-                            className="rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                          >
-                            <option value="PLN">PLN</option>
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                          </select>
-                          <input
-                            placeholder="np. / godz."
-                            value={editServiceForm.priceLabel}
-                            onChange={(e) => setEditServiceForm((f) => ({ ...f, priceLabel: e.target.value }))}
-                            className="flex-1 rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                          />
+              ) : (
+                <div className="space-y-3">
+                  {services.map((s) => (
+                    <div key={s.id} className="rounded-xl bg-white p-5 shadow-sm">
+                      <div className="flex items-start justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-[#111827]">{s.title}</p>
+                          {s.description && (
+                            <p className="mt-1 line-clamp-2 text-sm text-[#6B7280]">{s.description}</p>
+                          )}
+                          {s.price != null && (
+                            <span className="mt-2 inline-block text-lg font-semibold text-[#10B981]">
+                              {s.price} {s.currency}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="ml-4 flex shrink-0 gap-2">
                           <button
-                            onClick={() => handleUpdateService(s.id)}
-                            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                            onClick={() => openEditService(s)}
+                            className="inline-flex h-9 items-center rounded-lg border border-gray-300 px-3 text-xs font-medium text-[#111827] hover:bg-gray-50"
                           >
-                            Zapisz
+                            Edytuj
                           </button>
                           <button
-                            onClick={() => setEditingServiceId(null)}
-                            className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                            onClick={() => setDeletingServiceId(s.id)}
+                            className="inline-flex h-9 items-center rounded-lg border border-[#EF4444]/30 px-3 text-xs font-medium text-[#EF4444] hover:bg-red-50"
+                          >
+                            Usuń
+                          </button>
+                        </div>
+                      </div>
+                      {deletingServiceId === s.id && (
+                        <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 p-3">
+                          <span className="text-sm text-[#EF4444]">Czy na pewno?</span>
+                          <button
+                            onClick={() => handleDeleteService(s.id)}
+                            className="rounded-lg bg-[#EF4444] px-3 py-1 text-xs font-medium text-white"
+                          >
+                            Tak, usuń
+                          </button>
+                          <button
+                            onClick={() => setDeletingServiceId(null)}
+                            className="text-xs text-[#6B7280] hover:text-[#111827]"
                           >
                             Anuluj
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                    <div
-                      key={s.id}
-                      className="flex items-start justify-between rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-zinc-900 dark:text-white">{s.title}</p>
-                        {s.description && (
-                          <p className="mt-0.5 text-sm text-zinc-500">{s.description}</p>
-                        )}
-                        {s.price != null && (
-                          <span className="mt-2 inline-block rounded-lg bg-indigo-50 px-2.5 py-0.5 text-sm font-semibold text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
-                            {s.price} {s.currency}
-                            {s.priceLabel && <span className="ml-1 font-normal text-indigo-400">{s.priceLabel}</span>}
-                          </span>
-                        )}
-                      </div>
-                      <div className="ml-4 flex shrink-0 gap-3">
-                        <button
-                          onClick={() => startEditService(s)}
-                          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                        >
-                          Edytuj
-                        </button>
-                        <button
-                          onClick={() => handleDeleteService(s.id)}
-                          className="text-sm text-red-500 hover:text-red-700"
-                        >
-                          Usuń
-                        </button>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* ── TAB: Linki ── */}
-        {activeTab === "links" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Linki społecznościowe</h2>
-              {!showLinkForm && (
+          {/* ── LINKS TAB ── */}
+          {activeTab === "links" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-[#111827]">
+                  Moje linki{" "}
+                  <span className="text-sm font-normal text-[#6B7280]">
+                    {isPro ? links.length : `${links.length}/3`}
+                  </span>
+                </h2>
                 <button
-                  onClick={() => setShowLinkForm(true)}
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  onClick={openAddLink}
+                  disabled={!canAddLink}
+                  className="inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-5 text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50"
                 >
                   + Dodaj link
                 </button>
+              </div>
+              {!canAddLink && (
+                <p className="text-sm text-[#F59E0B]">Upgrade do Pro dla nieograniczonych linków.</p>
+              )}
+
+              {links.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed border-gray-300 p-10 text-center">
+                  <p className="text-sm text-[#6B7280]">Brak linków. Dodaj swoje profile społecznościowe.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {links.map((l) => (
+                    <div key={l.id} className="flex items-center gap-4 rounded-xl bg-white px-5 py-4 shadow-sm">
+                      <span className="text-xl">{getPlatformIcon(l.iconName)}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-[#111827]">{l.label}</p>
+                        <p className="truncate text-sm text-[#6B7280]">
+                          {l.url.length > 40 ? l.url.slice(0, 40) + "..." : l.url}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => openEditLink(l)}
+                        className="text-sm text-[#6B7280] hover:text-[#111827]"
+                      >
+                        Edytuj
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLink(l.id)}
+                        className="text-sm text-[#EF4444] hover:text-red-700"
+                      >
+                        Usuń
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
+          )}
 
-            {showLinkForm && (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-                <h3 className="mb-4 font-medium text-zinc-900 dark:text-white">Nowy link</h3>
-                <div className="space-y-3">
-                  <select
-                    value={linkForm.platform}
-                    onChange={(e) => setLinkForm((f) => ({ ...f, platform: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+          {/* ── BOOKING TAB ── */}
+          {activeTab === "booking" && (
+            <div className="space-y-6">
+              {!isPro ? (
+                <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+                  <div className="text-4xl">🔒</div>
+                  <h2 className="mt-4 text-lg font-semibold text-[#111827]">Booking dostępny w planie Pro</h2>
+                  <p className="mt-2 text-sm text-[#6B7280]">Pozwól klientom rezerwować spotkania z Tobą.</p>
+                  <Link
+                    href="/pricing"
+                    className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-6 text-sm font-medium text-white hover:bg-[#2563EB]"
                   >
-                    {PLATFORMS.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
-                  <input
-                    placeholder="Etykieta (opcjonalnie)"
-                    value={linkForm.label}
-                    onChange={(e) => setLinkForm((f) => ({ ...f, label: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                  <input
-                    placeholder="URL *"
-                    value={linkForm.url}
-                    onChange={(e) => setLinkForm((f) => ({ ...f, url: e.target.value }))}
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAddLink}
-                      className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
-                    >
-                      Dodaj
-                    </button>
-                    <button
-                      onClick={() => setShowLinkForm(false)}
-                      className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                    >
-                      Anuluj
-                    </button>
-                  </div>
+                    Upgrade do Pro
+                  </Link>
                 </div>
-              </div>
-            )}
-
-            {links.length === 0 && !showLinkForm ? (
-              <div className="rounded-xl border border-dashed border-zinc-300 p-10 text-center dark:border-zinc-700">
-                <p className="text-sm text-zinc-400">Brak linków. Dodaj swoje profile społecznościowe.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {links.map((l) =>
-                  editingLinkId === l.id ? (
-                    <div
-                      key={l.id}
-                      className="rounded-xl border border-indigo-200 bg-white p-5 dark:border-indigo-800 dark:bg-zinc-900"
-                    >
-                      <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Edytuj link</h3>
-                      <div className="space-y-3">
-                        <select
-                          value={editLinkForm.platform}
-                          onChange={(e) => setEditLinkForm((f) => ({ ...f, platform: e.target.value }))}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          {PLATFORMS.map((p) => (
-                            <option key={p.value} value={p.value}>{p.label}</option>
-                          ))}
-                        </select>
-                        <input
-                          placeholder="Etykieta"
-                          value={editLinkForm.label}
-                          onChange={(e) => setEditLinkForm((f) => ({ ...f, label: e.target.value }))}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        />
-                        <input
-                          placeholder="URL *"
-                          value={editLinkForm.url}
-                          onChange={(e) => setEditLinkForm((f) => ({ ...f, url: e.target.value }))}
-                          className="w-full rounded-lg border border-zinc-300 px-3 py-2.5 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        />
-                        <div className="flex gap-2">
+              ) : (
+                <>
+                  {/* Availability */}
+                  <div className="rounded-xl bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold text-[#111827]">Moja dostępność</h2>
+                    <div className="space-y-3">
+                      {currentAvailability.map((day, i) => (
+                        <div key={i} className="flex items-center gap-4 rounded-lg border border-gray-200 px-4 py-3">
                           <button
-                            onClick={() => handleUpdateLink(l.id)}
-                            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                            onClick={() => {
+                              const updated = [...currentAvailability];
+                              updated[i] = { ...updated[i], enabled: !updated[i].enabled };
+                              setAvailability(updated);
+                            }}
+                            className={`h-6 w-10 rounded-full transition-colors ${
+                              day.enabled ? "bg-[#3B82F6]" : "bg-gray-300"
+                            }`}
                           >
-                            Zapisz
+                            <div
+                              className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                day.enabled ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
                           </button>
-                          <button
-                            onClick={() => setEditingLinkId(null)}
-                            className="rounded-lg px-4 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                          >
-                            Anuluj
-                          </button>
+                          <span className="w-28 text-sm font-medium text-[#111827]">{DAY_NAMES[i]}</span>
+                          <input
+                            type="time"
+                            value={day.startTime}
+                            disabled={!day.enabled}
+                            onChange={(e) => {
+                              const updated = [...currentAvailability];
+                              updated[i] = { ...updated[i], startTime: e.target.value };
+                              setAvailability(updated);
+                            }}
+                            className="h-9 rounded-lg border border-gray-300 px-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                          />
+                          <span className="text-sm text-[#6B7280]">—</span>
+                          <input
+                            type="time"
+                            value={day.endTime}
+                            disabled={!day.enabled}
+                            onChange={(e) => {
+                              const updated = [...currentAvailability];
+                              updated[i] = { ...updated[i], endTime: e.target.value };
+                              setAvailability(updated);
+                            }}
+                            className="h-9 rounded-lg border border-gray-300 px-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                          />
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ) : (
-                    <div
-                      key={l.id}
-                      className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-zinc-900 dark:text-white">{l.label}</p>
-                        <p className="truncate text-sm text-zinc-400">{l.url}</p>
-                      </div>
-                      <div className="ml-4 flex shrink-0 gap-3">
-                        <button
-                          onClick={() => startEditLink(l)}
-                          className="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-                        >
-                          Edytuj
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLink(l.id)}
-                          className="text-sm text-red-500 hover:text-red-700"
-                        >
-                          Usuń
-                        </button>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB: Statystyki ── */}
-        {activeTab === "stats" && (
-          <div className="space-y-6">
-            {!profileExists ? (
-              <div className="rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
-                <p className="text-zinc-500">Najpierw zapisz profil, żeby zobaczyć statystyki.</p>
-                <button
-                  onClick={() => setActiveTab("profile")}
-                  className="mt-4 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                >
-                  Przejdź do Profilu →
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <StatCard
-                    label="Wyświetlenia profilu"
-                    value={stats?.viewCount ?? 0}
-                    icon="👁"
-                  />
-                  <StatCard
-                    label="Usługi"
-                    value={stats?.servicesCount ?? 0}
-                    icon="💼"
-                  />
-                  <StatCard
-                    label="Linki"
-                    value={stats?.linksCount ?? 0}
-                    icon="🔗"
-                  />
-                </div>
-
-                <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-                  <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">Twój link</h3>
-                  <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
-                    <span className="flex-1 truncate text-sm text-zinc-600 dark:text-zinc-300">
-                      {stats?.profileUrl ?? profileUrl}
-                    </span>
                     <button
-                      onClick={copyLink}
-                      className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
+                      onClick={handleSaveAvailability}
+                      disabled={savingAvailability}
+                      className="mt-4 flex h-11 items-center justify-center rounded-xl bg-[#3B82F6] px-6 text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50"
                     >
-                      {copied ? "✓ Skopiowano!" : "Kopiuj"}
+                      {savingAvailability ? <Spinner className="h-5 w-5 text-white" /> : "Zapisz dostępność"}
                     </button>
                   </div>
-                  <div className="mt-3">
-                    <a
-                      href={`/${profile!.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                    >
-                      Otwórz profil
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
 
-        {/* ── TAB: Podgląd ── */}
-        {activeTab === "preview" && (
-          <div className="space-y-6">
-            {profileExists && profileUrl ? (
-              <>
-                <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-                  <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-                    Twój link
-                  </h2>
-                  <div className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
-                    <span className="flex-1 truncate text-sm text-zinc-600 dark:text-zinc-300">
-                      {profileUrl}
+                  {/* Bookings */}
+                  <div className="rounded-xl bg-white p-6 shadow-sm">
+                    <h2 className="mb-4 text-lg font-semibold text-[#111827]">Rezerwacje</h2>
+                    <div className="mb-4 flex gap-2">
+                      <button
+                        onClick={() => setBookingTab("upcoming")}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                          bookingTab === "upcoming"
+                            ? "bg-[#3B82F6]/10 text-[#3B82F6]"
+                            : "text-[#6B7280] hover:bg-gray-100"
+                        }`}
+                      >
+                        Nadchodzące
+                      </button>
+                      <button
+                        onClick={() => setBookingTab("history")}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium ${
+                          bookingTab === "history"
+                            ? "bg-[#3B82F6]/10 text-[#3B82F6]"
+                            : "text-[#6B7280] hover:bg-gray-100"
+                        }`}
+                      >
+                        Historia
+                      </button>
+                    </div>
+                    {bookings.length === 0 ? (
+                      <div className="py-10 text-center">
+                        <div className="text-3xl">📅</div>
+                        <p className="mt-2 text-sm text-[#6B7280]">Brak rezerwacji</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {bookings
+                          .filter((b) =>
+                            bookingTab === "upcoming"
+                              ? b.status === "PENDING" || b.status === "CONFIRMED"
+                              : b.status === "CANCELLED"
+                          )
+                          .map((b) => (
+                            <div key={b.id} className="rounded-lg border border-gray-200 p-4">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="font-medium text-[#111827]">
+                                    {b.date} o {b.time}
+                                  </p>
+                                  <p className="mt-1 text-sm text-[#6B7280]">
+                                    {b.clientName} · {b.clientEmail}
+                                  </p>
+                                  {b.message && (
+                                    <p className="mt-1 text-sm text-[#6B7280]">&quot;{b.message}&quot;</p>
+                                  )}
+                                </div>
+                                <span
+                                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                    b.status === "PENDING"
+                                      ? "bg-[#F59E0B]/10 text-[#F59E0B]"
+                                      : b.status === "CONFIRMED"
+                                        ? "bg-[#10B981]/10 text-[#10B981]"
+                                        : "bg-[#EF4444]/10 text-[#EF4444]"
+                                  }`}
+                                >
+                                  {b.status}
+                                </span>
+                              </div>
+                              {b.status === "PENDING" && (
+                                <div className="mt-3 flex gap-2">
+                                  <button
+                                    onClick={() => handleBookingAction(b.id, "CONFIRMED")}
+                                    className="inline-flex h-9 items-center rounded-lg bg-[#10B981] px-3 text-xs font-medium text-white hover:bg-green-600"
+                                  >
+                                    Potwierdź ✓
+                                  </button>
+                                  <button
+                                    onClick={() => handleBookingAction(b.id, "CANCELLED")}
+                                    className="inline-flex h-9 items-center rounded-lg bg-[#EF4444] px-3 text-xs font-medium text-white hover:bg-red-600"
+                                  >
+                                    Odrzuć ✗
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── STATS TAB ── */}
+          {activeTab === "stats" && (
+            <div className="space-y-6">
+              {!isPro ? (
+                <div className="rounded-xl bg-white p-12 text-center shadow-sm">
+                  <div className="text-4xl">🔒</div>
+                  <h2 className="mt-4 text-lg font-semibold text-[#111827]">Statystyki dostępne w planie Pro</h2>
+                  <Link
+                    href="/pricing"
+                    className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-6 text-sm font-medium text-white hover:bg-[#2563EB]"
+                  >
+                    Upgrade do Pro
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <StatCard label="Wyświetlenia profilu" value={stats?.viewCount ?? 0} sub="ostatnie 30 dni" icon="👁" />
+                  <StatCard label="Usługi" value={stats?.servicesCount ?? 0} icon="🛠️" />
+                  <StatCard label="Linki" value={stats?.linksCount ?? 0} icon="🔗" />
+                  <StatCard label="Oczekujące rezerwacje" value={stats?.pendingBookings ?? 0} icon="📅" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PLAN TAB ── */}
+          {activeTab === "plan" && (
+            <div className="space-y-6">
+              {!isPro ? (
+                <div className="rounded-xl bg-white p-8 shadow-sm">
+                  <h2 className="text-lg font-semibold text-[#111827]">Plan Free</h2>
+                  <ul className="mt-4 space-y-2 text-sm text-[#6B7280]">
+                    <li>• Do 3 usług</li>
+                    <li>• Do 3 linków społecznościowych</li>
+                    <li>• Brak bookingu spotkań</li>
+                    <li>• Brak analityk</li>
+                  </ul>
+                  <button
+                    onClick={handleUpgrade}
+                    disabled={upgradingPlan}
+                    className="mt-6 flex h-12 w-full items-center justify-center rounded-xl bg-[#3B82F6] text-sm font-medium text-white hover:bg-[#2563EB] disabled:opacity-50"
+                  >
+                    {upgradingPlan ? <Spinner className="h-5 w-5 text-white" /> : "Upgrade do Pro — $9/mies."}
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-white p-8 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-semibold text-[#111827]">Plan Pro</h2>
+                    <span className="rounded-full bg-[#10B981]/10 px-3 py-1 text-xs font-semibold text-[#10B981]">
+                      Aktywny ✓
                     </span>
-                    <button
-                      onClick={copyLink}
-                      className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
-                    >
-                      {copied ? "✓ Skopiowano!" : "Kopiuj"}
-                    </button>
                   </div>
-                  <div className="mt-3 flex gap-3">
-                    <a
-                      href={`/${profile!.username}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                    >
-                      Otwórz profil
-                      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                        <path fillRule="evenodd" d="M5.22 14.78a.75.75 0 001.06 0l7.22-7.22v5.69a.75.75 0 001.5 0v-7.5a.75.75 0 00-.75-.75h-7.5a.75.75 0 000 1.5h5.69l-7.22 7.22a.75.75 0 000 1.06z" clipRule="evenodd" />
-                      </svg>
-                    </a>
-                  </div>
+                  <ul className="mt-4 space-y-2 text-sm text-[#6B7280]">
+                    <li>✓ Nieograniczone usługi i linki</li>
+                    <li>✓ Booking spotkań</li>
+                    <li>✓ Analityki wyświetleń</li>
+                    <li>✓ Priorytetowe wsparcie</li>
+                  </ul>
+                  <button
+                    onClick={handleManageSubscription}
+                    className="mt-6 inline-flex h-11 items-center rounded-xl border border-gray-300 px-6 text-sm font-medium text-[#111827] hover:bg-gray-50"
+                  >
+                    Zarządzaj subskrypcją
+                  </button>
                 </div>
-
-                <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-100 px-4 py-2 dark:border-zinc-700 dark:bg-zinc-800">
-                    <div className="h-3 w-3 rounded-full bg-red-400" />
-                    <div className="h-3 w-3 rounded-full bg-yellow-400" />
-                    <div className="h-3 w-3 rounded-full bg-green-400" />
-                    <span className="ml-2 text-xs text-zinc-400">{profileUrl}</span>
-                  </div>
-                  <iframe
-                    src={`/${profile!.username}`}
-                    className="h-[600px] w-full bg-white"
-                    title="Podgląd profilu"
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
-                <p className="text-zinc-500">Najpierw zapisz profil z nazwą użytkownika.</p>
-                <button
-                  onClick={() => setActiveTab("profile")}
-                  className="mt-4 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                >
-                  Przejdź do Profilu →
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </main>
+
+      {/* ── Bottom nav (mobile) ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white lg:hidden">
+        <div className="flex h-16 items-center justify-around">
+          {[
+            { id: "profile" as Tab, icon: "👤", label: "Profil" },
+            { id: "services" as Tab, icon: "🛠️", label: "Usługi" },
+            { id: "links" as Tab, icon: "🔗", label: "Linki" },
+            { id: "booking" as Tab, icon: "📅", label: "Booking" },
+            { id: "plan" as Tab, icon: "💳", label: "Plan" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center gap-0.5 text-xs ${
+                activeTab === item.id ? "text-[#3B82F6]" : "text-[#6B7280]"
+              }`}
+            >
+              <span className="text-lg">{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* ── Service Modal ── */}
+      <Modal
+        open={serviceModal}
+        onClose={() => setServiceModal(false)}
+        title={editingService ? "Edytuj usługę" : "Dodaj usługę"}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[#111827]">Tytuł *</label>
+            <input
+              placeholder="np. Konsultacja 1h"
+              value={serviceForm.title}
+              onChange={(e) => setServiceForm((f) => ({ ...f, title: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[#111827]">Opis</label>
+            <textarea
+              placeholder="Opis usługi (opcjonalnie)"
+              value={serviceForm.description}
+              onChange={(e) => setServiceForm((f) => ({ ...f, description: e.target.value }))}
+              rows={2}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="mb-1.5 block text-sm font-medium text-[#111827]">Cena</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={serviceForm.price}
+                onChange={(e) => setServiceForm((f) => ({ ...f, price: e.target.value }))}
+                className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm outline-none focus:border-[#3B82F6]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[#111827]">Waluta</label>
+              <select
+                value={serviceForm.currency}
+                onChange={(e) => setServiceForm((f) => ({ ...f, currency: e.target.value }))}
+                className="h-11 rounded-xl border border-gray-300 px-3 text-sm outline-none focus:border-[#3B82F6]"
+              >
+                <option value="PLN">PLN</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setServiceModal(false)}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl border border-gray-300 text-sm font-medium text-[#6B7280] hover:bg-gray-50"
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={handleSaveService}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl bg-[#3B82F6] text-sm font-medium text-white hover:bg-[#2563EB]"
+            >
+              Zapisz usługę
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Link Modal ── */}
+      <Modal
+        open={linkModal}
+        onClose={() => setLinkModal(false)}
+        title={editingLink ? "Edytuj link" : "Dodaj link"}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[#111827]">Platforma</label>
+            <select
+              value={linkForm.platform}
+              onChange={(e) => setLinkForm((f) => ({ ...f, platform: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-gray-300 px-3 text-sm outline-none focus:border-[#3B82F6]"
+            >
+              {PLATFORMS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.icon} {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-[#111827]">URL *</label>
+            <input
+              placeholder="https://..."
+              value={linkForm.url}
+              onChange={(e) => setLinkForm((f) => ({ ...f, url: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-gray-300 px-4 text-sm outline-none focus:border-[#3B82F6]"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={() => setLinkModal(false)}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl border border-gray-300 text-sm font-medium text-[#6B7280] hover:bg-gray-50"
+            >
+              Anuluj
+            </button>
+            <button
+              onClick={handleSaveLink}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl bg-[#3B82F6] text-sm font-medium text-white hover:bg-[#2563EB]"
+            >
+              Zapisz
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  sub,
+}: {
+  label: string;
+  value: number;
+  icon: string;
+  sub?: string;
+}) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-xl bg-white p-6 shadow-sm">
       <div className="mb-2 text-2xl">{icon}</div>
-      <p className="text-3xl font-bold text-zinc-900 dark:text-white">{value.toLocaleString()}</p>
-      <p className="mt-1 text-sm text-zinc-500">{label}</p>
+      <p className="text-3xl font-bold text-[#111827]">{value.toLocaleString()}</p>
+      <p className="mt-1 text-sm text-[#6B7280]">{label}</p>
+      {sub && <p className="text-xs text-[#6B7280]">{sub}</p>}
     </div>
   );
 }
