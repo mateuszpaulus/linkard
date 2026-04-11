@@ -17,8 +17,24 @@ async function apiFetch<T>(
   return res.json();
 }
 
+// ── Public ───────────────────────────────────────────────────────────────────
+
 export const getPublicProfile = (username: string) =>
   apiFetch<ProfileResponse>(`/api/p/${username}`);
+
+export const getPublicAvailability = (username: string) =>
+  apiFetch<AvailabilitySlot[]>(`/api/p/${username}/availability`);
+
+export const getBookedSlots = (username: string, date: string) =>
+  apiFetch<BookedSlot[]>(`/api/p/${username}/booked-slots?date=${date}`);
+
+export const createBooking = (username: string, data: BookingRequest) =>
+  apiFetch<BookingResponse>(`/api/p/${username}/book`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+// ── Authenticated ─────────────────────────────────────────────────────────────
 
 export const getMyProfile = (token: string) =>
   apiFetch<ProfileResponse>("/api/me/profile", { token });
@@ -63,6 +79,40 @@ export const addLink = (token: string, data: LinkRequest) =>
 export const deleteLink = (token: string, id: string) =>
   apiFetch<void>(`/api/me/links/${id}`, { method: "DELETE", token });
 
+export const getMyAvailability = (token: string) =>
+  apiFetch<AvailabilitySlot[]>("/api/me/availability", { token });
+
+export const saveAvailability = (token: string, slots: AvailabilitySlot[]) =>
+  apiFetch<AvailabilitySlot[]>("/api/me/availability", {
+    method: "PUT",
+    token,
+    body: JSON.stringify(slots),
+  });
+
+export const getMyBookings = (token: string) =>
+  apiFetch<BookingResponse[]>("/api/me/bookings", { token });
+
+export const confirmBooking = (token: string, id: string) =>
+  apiFetch<BookingResponse>(`/api/me/bookings/${id}/confirm`, {
+    method: "PATCH",
+    token,
+  });
+
+export const cancelBooking = (token: string, id: string) =>
+  apiFetch<BookingResponse>(`/api/me/bookings/${id}/cancel`, {
+    method: "PATCH",
+    token,
+  });
+
+export const getMySubscription = (token: string) =>
+  apiFetch<SubscriptionInfo>("/api/me/subscription", { token });
+
+export const createCheckoutSession = (token: string) =>
+  apiFetch<{ url: string }>("/api/me/create-checkout-session", {
+    method: "POST",
+    token,
+  });
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ProfileResponse {
@@ -75,6 +125,7 @@ export interface ProfileResponse {
   websiteUrl: string | null;
   services: ServiceResponse[];
   links: LinkResponse[];
+  plan: "FREE" | "PRO" | null;
 }
 
 export interface ProfileRequest {
@@ -116,4 +167,44 @@ export interface LinkRequest {
   label: string;
   url: string;
   iconName?: string;
+}
+
+export interface AvailabilitySlot {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+export interface BookingRequest {
+  clientName: string;
+  clientEmail: string;
+  clientMessage?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface BookingResponse {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  clientMessage: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED";
+  createdAt: string;
+}
+
+export interface BookedSlot {
+  startTime: string;
+  endTime: string;
+}
+
+export interface SubscriptionInfo {
+  plan: "FREE" | "PRO";
+  status: string;
+  isPro: boolean;
+  renewalDate: string | null;
 }

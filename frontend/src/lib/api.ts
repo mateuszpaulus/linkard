@@ -8,15 +8,28 @@ import type {
   LinkRequest,
   ContactRequest,
   ProfilesPage,
-  AvailabilityDay,
-  AvailabilityRequest,
-  BookingSlot,
-  BookingRequest,
-  BookingResponse,
   CheckoutSessionResponse,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+export type ApiError = {
+  status: number;
+  message: string;
+  isPlanLimit: boolean;
+};
+
+export class ApiException extends Error {
+  status: number;
+  isPlanLimit: boolean;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiException";
+    this.status = status;
+    this.isPlanLimit = status === 402 || status === 403;
+  }
+}
 
 async function apiFetch<T>(
   path: string,
@@ -40,7 +53,19 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `API error: ${res.status} ${res.statusText}`);
+    let message: string;
+    if (res.status === 401) {
+      message = "Unauthorized — please sign in again.";
+    } else if (res.status === 402 || res.status === 403) {
+      message = text || "This feature requires a Pro plan.";
+    } else if (res.status === 404) {
+      message = text || "Not found.";
+    } else if (res.status >= 500) {
+      message = "Server error — please try again later.";
+    } else {
+      message = text || `API error: ${res.status} ${res.statusText}`;
+    }
+    throw new ApiException(res.status, message);
   }
 
   if (res.status === 204) return undefined as T;
@@ -63,16 +88,16 @@ export function getPublicProfiles(page = 0, size = 12) {
   return apiFetch<ProfilesPage>(`/api/profiles?page=${page}&size=${size}`);
 }
 
-export function getAvailableSlots(username: string, date: string) {
-  return apiFetch<BookingSlot[]>(`/api/p/${username}/slots?date=${date}`);
+export function getPublicAvailability(username: string) {
+  return apiFetch<AvailabilitySlot[]>(`/api/p/${username}/availability`);
 }
 
-export function getAvailableDays(username: string, month: string) {
-  return apiFetch<string[]>(`/api/p/${username}/available-days?month=${month}`);
+export function getBookedSlots(username: string, date: string) {
+  return apiFetch<BookingResponse[]>(`/api/p/${username}/booked-slots?date=${date}`);
 }
 
 export function createBooking(username: string, data: BookingRequest) {
-  return apiFetch<BookingResponse>(`/api/p/${username}/bookings`, {
+  return apiFetch<BookingResponse>(`/api/p/${username}/book`, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -157,29 +182,35 @@ export function deleteLink(token: string, id: string) {
   });
 }
 
-// ── Booking / Availability ──
+// ── Availability ──
 export function getMyAvailability(token: string) {
-  return apiFetch<AvailabilityDay[]>("/api/me/availability", { token });
+  return apiFetch<AvailabilitySlot[]>("/api/me/availability", { token });
 }
 
-export function updateMyAvailability(token: string, data: AvailabilityRequest) {
-  return apiFetch<AvailabilityDay[]>("/api/me/availability", {
+export function saveMyAvailability(token: string, slots: AvailabilitySlot[]) {
+  return apiFetch<AvailabilitySlot[]>("/api/me/availability", {
     method: "PUT",
     token,
-    body: JSON.stringify(data),
+    body: JSON.stringify(slots),
   });
 }
 
-export function getMyBookings(token: string, status?: string) {
-  const q = status ? `?status=${status}` : "";
-  return apiFetch<BookingResponse[]>(`/api/me/bookings${q}`, { token });
+// ── Bookings ──
+export function getMyBookings(token: string) {
+  return apiFetch<BookingResponse[]>("/api/me/bookings", { token });
 }
 
-export function updateBookingStatus(token: string, id: string, status: "CONFIRMED" | "CANCELLED") {
-  return apiFetch<BookingResponse>(`/api/me/bookings/${id}/status`, {
+export function confirmBooking(token: string, id: string) {
+  return apiFetch<BookingResponse>(`/api/me/bookings/${id}/confirm`, {
     method: "PATCH",
     token,
-    body: JSON.stringify({ status }),
+  });
+}
+
+export function cancelBooking(token: string, id: string) {
+  return apiFetch<BookingResponse>(`/api/me/bookings/${id}/cancel`, {
+    method: "PATCH",
+    token,
   });
 }
 
@@ -196,4 +227,33 @@ export function getCustomerPortalUrl(token: string) {
     method: "POST",
     token,
   });
+}
+
+// ── Types (used by BookingWidget and other components) ──
+export interface AvailabilitySlot {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+export interface BookingRequest {
+  clientName: string;
+  clientEmail: string;
+  clientMessage?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface BookingResponse {
+  id: string;
+  clientName: string;
+  clientEmail: string;
+  clientMessage: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELLED";
+  createdAt: string;
 }

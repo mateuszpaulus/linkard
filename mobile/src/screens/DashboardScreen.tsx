@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
+  RefreshControl,
+  Linking,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useAuth } from "@clerk/clerk-expo";
@@ -43,7 +45,7 @@ const PLATFORMS = [
   { value: "twitter", label: "Twitter / X" },
   { value: "youtube", label: "YouTube" },
   { value: "tiktok", label: "TikTok" },
-  { value: "other", label: "Inne" },
+  { value: "other", label: "Other" },
 ];
 
 type Tab = "profile" | "services" | "links";
@@ -58,6 +60,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [form, setForm] = useState({
     username: "",
@@ -77,6 +80,12 @@ export default function DashboardScreen({ navigation }: Props) {
 
   useEffect(() => { loadData(); }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  }, []);
+
   async function loadData() {
     const token = await getToken();
     if (!token) return;
@@ -94,7 +103,7 @@ export default function DashboardScreen({ navigation }: Props) {
       setServices(s);
       setLinks(l);
     } catch {
-      // brak profilu — nowy użytkownik
+      // no profile yet — new user
     } finally {
       setLoading(false);
     }
@@ -102,7 +111,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   async function handleSave() {
     if (!USERNAME_REGEX.test(form.username)) {
-      Alert.alert("Błędna nazwa", "3-30 znaków: a-z, 0-9, myślniki");
+      Alert.alert("Invalid username", "3-30 characters: a-z, 0-9, hyphens");
       return;
     }
     const token = await getToken();
@@ -113,9 +122,9 @@ export default function DashboardScreen({ navigation }: Props) {
         ? await updateProfile(token, form)
         : await createProfile(token, form);
       setProfile(saved);
-      Alert.alert("✓ Zapisano", "Profil został zaktualizowany");
+      Alert.alert("✓ Saved", "Profile updated successfully");
     } catch (err) {
-      Alert.alert("Błąd", err instanceof Error ? err.message : "Nie udało się zapisać");
+      Alert.alert("Error", err instanceof Error ? err.message : "Failed to save profile");
     } finally {
       setSaving(false);
     }
@@ -136,15 +145,15 @@ export default function DashboardScreen({ navigation }: Props) {
       setServicePrice("");
       setShowServiceForm(false);
     } catch {
-      Alert.alert("Błąd", "Nie udało się dodać usługi");
+      Alert.alert("Error", "Failed to add service");
     }
   }
 
   async function handleDeleteService(id: string) {
-    Alert.alert("Usuń usługę?", "Tej operacji nie można cofnąć.", [
-      { text: "Anuluj", style: "cancel" },
+    Alert.alert("Delete service?", "This action cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: "Usuń", style: "destructive",
+        text: "Delete", style: "destructive",
         onPress: async () => {
           const token = await getToken();
           if (!token) return;
@@ -166,7 +175,7 @@ export default function DashboardScreen({ navigation }: Props) {
       setLinkUrl("");
       setShowLinkForm(false);
     } catch {
-      Alert.alert("Błąd", "Nie udało się dodać linku");
+      Alert.alert("Error", "Failed to add link");
     }
   }
 
@@ -179,10 +188,16 @@ export default function DashboardScreen({ navigation }: Props) {
 
   async function handleCopyLink() {
     if (!profile?.username) return;
-    const url = `https://linkard-io.vercel.app/${profile.username}`;
+    const url = `https://skedify-io.vercel.app/${profile.username}`;
     await Clipboard.setStringAsync(url);
     setCopied(true);
+    Alert.alert("Link copied!", url);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleOpenProfile() {
+    if (!profile?.username) return;
+    Linking.openURL(`https://skedify-io.vercel.app/${profile.username}`);
   }
 
   const initials = form.displayName
@@ -201,22 +216,27 @@ export default function DashboardScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerLogo}>Linkard</Text>
+        <Text style={styles.headerLogo}>Skedify</Text>
         <View style={styles.headerRight}>
           {profile && (
             <TouchableOpacity
               onPress={() => navigation.navigate("PublicProfile", { username: profile.username })}
             >
-              <Text style={styles.headerLink}>Podgląd</Text>
+              <Text style={styles.headerLink}>Preview</Text>
             </TouchableOpacity>
           )}
           {profile?.username && (
             <TouchableOpacity onPress={handleCopyLink}>
-              <Text style={styles.headerLink}>{copied ? "✓" : "Kopiuj link"}</Text>
+              <Text style={styles.headerLink}>{copied ? "✓" : "Copy"}</Text>
+            </TouchableOpacity>
+          )}
+          {profile?.username && (
+            <TouchableOpacity onPress={handleOpenProfile}>
+              <Text style={styles.headerLink}>Open ↗</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={() => signOut()}>
-            <Text style={[styles.headerLink, { color: "#ef4444" }]}>Wyloguj</Text>
+            <Text style={[styles.headerLink, { color: "#ef4444" }]}>Sign out</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -230,15 +250,19 @@ export default function DashboardScreen({ navigation }: Props) {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === "profile" ? "👤 Profil" : tab === "services" ? "💼 Usługi" : "🔗 Linki"}
+              {tab === "profile" ? "👤 Profile" : tab === "services" ? "💼 Services" : "🔗 Links"}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* ── TAB: Profil ── */}
+      {/* ── TAB: Profile ── */}
       {activeTab === "profile" && (
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
           {/* Avatar */}
           <View style={styles.avatarRow}>
             {profile?.avatarUrl
@@ -248,9 +272,9 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Twój link</Text>
+            <Text style={styles.label}>Your link</Text>
             <View style={styles.usernameRow}>
-              <Text style={styles.usernamePrefix}>linkard-io.vercel.app/</Text>
+              <Text style={styles.usernamePrefix}>skedify-io.vercel.app/</Text>
               <TextInput
                 style={styles.usernameInput}
                 placeholder="username"
@@ -262,10 +286,10 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Imię i nazwisko</Text>
+            <Text style={styles.label}>Full name</Text>
             <TextInput
               style={styles.input}
-              placeholder="np. Jan Kowalski"
+              placeholder="e.g. John Smith"
               value={form.displayName}
               onChangeText={(v) => setForm((f) => ({ ...f, displayName: v }))}
             />
@@ -280,7 +304,7 @@ export default function DashboardScreen({ navigation }: Props) {
             </View>
             <TextInput
               style={[styles.input, styles.textarea]}
-              placeholder="Opowiedz o sobie..."
+              placeholder="Tell us about yourself..."
               value={form.bio}
               onChangeText={(v) => setForm((f) => ({ ...f, bio: v.slice(0, BIO_MAX) }))}
               multiline
@@ -289,20 +313,20 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Lokalizacja</Text>
+            <Text style={styles.label}>Location</Text>
             <TextInput
               style={styles.input}
-              placeholder="np. Warszawa"
+              placeholder="e.g. Warsaw"
               value={form.location}
               onChangeText={(v) => setForm((f) => ({ ...f, location: v }))}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Strona internetowa</Text>
+p            <Text style={styles.label}>Website</Text>
             <TextInput
               style={styles.input}
-              placeholder="https://twojastrona.pl"
+              placeholder="https://yourwebsite.com"
               value={form.websiteUrl}
               onChangeText={(v) => setForm((f) => ({ ...f, websiteUrl: v }))}
               keyboardType="url"
@@ -313,19 +337,19 @@ export default function DashboardScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
             {saving
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.saveButtonText}>Zapisz profil</Text>
+              : <Text style={styles.saveButtonText}>Save profile</Text>
             }
           </TouchableOpacity>
         </ScrollView>
       )}
 
-      {/* ── TAB: Usługi ── */}
+      {/* ── TAB: Services ── */}
       {activeTab === "services" && (
         <View style={{ flex: 1 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>Usługi</Text>
+            <Text style={styles.sectionTitle}>Services</Text>
             <TouchableOpacity onPress={() => setShowServiceForm(true)}>
-              <Text style={styles.addBtn}>+ Dodaj</Text>
+              <Text style={styles.addBtn}>+ Add</Text>
             </TouchableOpacity>
           </View>
 
@@ -333,23 +357,23 @@ export default function DashboardScreen({ navigation }: Props) {
             <View style={styles.inlineForm}>
               <TextInput
                 style={styles.input}
-                placeholder="Tytuł usługi *"
+                placeholder="Service title *"
                 value={serviceTitle}
                 onChangeText={setServiceTitle}
               />
               <TextInput
                 style={styles.input}
-                placeholder="Cena (np. 300)"
+                placeholder="Price (e.g. 300)"
                 value={servicePrice}
                 onChangeText={setServicePrice}
                 keyboardType="decimal-pad"
               />
               <View style={styles.formButtons}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleAddService}>
-                  <Text style={styles.saveButtonText}>Dodaj</Text>
+                  <Text style={styles.saveButtonText}>Add</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setShowServiceForm(false)}>
-                  <Text style={styles.cancelText}>Anuluj</Text>
+                  <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -359,7 +383,7 @@ export default function DashboardScreen({ navigation }: Props) {
             data={services}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<Text style={styles.emptyText}>Brak usług. Dodaj pierwszą.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>No services yet. Add your first one.</Text>}
             renderItem={({ item }) => (
               <View style={styles.listItem}>
                 <View style={{ flex: 1 }}>
@@ -369,7 +393,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   )}
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteService(item.id)}>
-                  <Text style={styles.deleteText}>Usuń</Text>
+                  <Text style={styles.deleteText}>Delete</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -377,13 +401,13 @@ export default function DashboardScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* ── TAB: Linki ── */}
+      {/* ── TAB: Links ── */}
       {activeTab === "links" && (
         <View style={{ flex: 1 }}>
           <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>Linki społecznościowe</Text>
+            <Text style={styles.sectionTitle}>Social links</Text>
             <TouchableOpacity onPress={() => setShowLinkForm(true)}>
-              <Text style={styles.addBtn}>+ Dodaj</Text>
+              <Text style={styles.addBtn}>+ Add</Text>
             </TouchableOpacity>
           </View>
 
@@ -414,10 +438,10 @@ export default function DashboardScreen({ navigation }: Props) {
               />
               <View style={styles.formButtons}>
                 <TouchableOpacity style={styles.saveButton} onPress={handleAddLink}>
-                  <Text style={styles.saveButtonText}>Dodaj</Text>
+                  <Text style={styles.saveButtonText}>Add</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setShowLinkForm(false)}>
-                  <Text style={styles.cancelText}>Anuluj</Text>
+                  <Text style={styles.cancelText}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -427,7 +451,7 @@ export default function DashboardScreen({ navigation }: Props) {
             data={links}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
-            ListEmptyComponent={<Text style={styles.emptyText}>Brak linków. Dodaj swoje profile.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>No links yet. Add your profiles.</Text>}
             renderItem={({ item }) => (
               <View style={styles.listItem}>
                 <View style={{ flex: 1 }}>
@@ -435,7 +459,7 @@ export default function DashboardScreen({ navigation }: Props) {
                   <Text style={styles.listItemSub} numberOfLines={1}>{item.url}</Text>
                 </View>
                 <TouchableOpacity onPress={() => handleDeleteLink(item.id)}>
-                  <Text style={styles.deleteText}>Usuń</Text>
+                  <Text style={styles.deleteText}>Delete</Text>
                 </TouchableOpacity>
               </View>
             )}

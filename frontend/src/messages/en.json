@@ -1,0 +1,331 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "back": "← Back",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "sending": "Sending...",
+    "yes": "Yes, delete",
+    "confirm": "Confirm",
+    "upgrade": "Upgrade to Pro",
+    "add": "Add",
+    "open": "Open",
+    "copy": "Copy",
+    "copied": "Copied! ✓",
+    "areYouSure": "Are you sure?",
+    "close_short": "Close"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "signOut": "Sign out",
+    "explore": "Explore profiles",
+    "pricing": "Pricing",
+    "getStarted": "Get started free"
+  },
+  "home": {
+    "badge": "Link-in-bio for professionals",
+    "hero": "Your professional profile in 5 minutes",
+    "heroSub": "One page. All your services. One link to share.",
+    "ctaPrimary": "Create free profile →",
+    "ctaSecondary": "See examples",
+    "joinCount": "Join 1000+ professionals",
+    "howTitle": "As simple as 1-2-3",
+    "forWhoTitle": "Built for professionals",
+    "featuresTitle": "Everything you need",
+    "readyTitle": "Ready to get started?",
+    "readySub": "Join for free. Upgrade when you're ready.",
+    "ctaDashboard": "Go to dashboard",
+    "ctaFree": "Create free profile",
+    "steps": {
+      "0": { "title": "Sign up", "desc": "Create an account in 30 seconds via email or Google" },
+      "1": { "title": "Fill your profile", "desc": "Add bio, services, prices and social links" },
+      "2": { "title": "Share your link", "desc": "One link for everything: skedify.io/yourname" }
+    },
+    "audiences": {
+      "0": { "title": "Developers & IT", "desc": "Showcase your portfolio, tech stack and services to potential clients" },
+      "1": { "title": "Creatives", "desc": "Designers, photographers, videographers — your portfolio always at hand" },
+      "2": { "title": "Consultants & coaches", "desc": "One link for your offer, booking and client contact" }
+    },
+    "features": {
+      "0": "Public profile with custom URL",
+      "1": "Service list with prices",
+      "2": "Social links",
+      "3": "Contact form",
+      "4": "Meeting booking system",
+      "5": "Custom domain",
+      "6": "View analytics",
+      "7": "Unlimited services"
+    },
+    "mockContact": "Get in touch",
+    "mockBio": "Full-stack developer helping startups build great products."
+  },
+  "auth": {
+    "signInTitle": "Welcome back!",
+    "signInSub": "Sign in and manage your profile.",
+    "signUpTitle": "Create a professional profile in 5 minutes",
+    "signUpSub": "Join the professionals already using Skedify.",
+    "feat1": "Profile with bio, services and prices",
+    "feat2": "Social links in one place",
+    "feat3": "Contact form and meeting booking"
+  },
+  "dashboard": {
+    "tabs": {
+      "profile": "Profile",
+      "services": "Services",
+      "links": "Links",
+      "booking": "Booking",
+      "stats": "Stats",
+      "plan": "Plan"
+    },
+    "profile": {
+      "title": "Your profile",
+      "create": "Create profile",
+      "yourLink": "Your link",
+      "usernamePlaceholder": "your-username",
+      "usernameError": "3–30 chars: a-z, 0-9, hyphens",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "e.g. John Doe",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell people about yourself...",
+      "location": "Location",
+      "locationPlaceholder": "New York, USA",
+      "website": "Website",
+      "websitePlaceholder": "https://yoursite.com",
+      "save": "Save profile",
+      "saved": "Profile saved!",
+      "saveError": "Failed to save profile",
+      "publicLink": "Your public link:",
+      "user": "User"
+    },
+    "services": {
+      "title": "My services",
+      "addBtn": "+ Add service",
+      "empty": "No services yet. Add your first service.",
+      "upgradeHint": "Upgrade to Pro for unlimited services.",
+      "saved": "Service saved!",
+      "added": "Service added!",
+      "deleted": "Service deleted",
+      "saveError": "Failed to save service",
+      "deleteError": "Failed to delete service",
+      "limitHint": "3 service limit on Free plan",
+      "modal": {
+        "addTitle": "Add service",
+        "editTitle": "Edit service",
+        "titleLabel": "Title *",
+        "titlePlaceholder": "e.g. 1h Consultation",
+        "description": "Description",
+        "descriptionPlaceholder": "Service description (optional)",
+        "price": "Price",
+        "currency": "Currency",
+        "save": "Save service"
+      }
+    },
+    "links": {
+      "title": "My links",
+      "addBtn": "+ Add link",
+      "empty": "No links yet. Add your social profiles.",
+      "upgradeHint": "Upgrade to Pro for unlimited links.",
+      "saved": "Link saved!",
+      "added": "Link added!",
+      "saveError": "Failed to save link",
+      "deleteError": "Failed to delete link",
+      "limitHint": "3 link limit on Free plan",
+      "modal": {
+        "addTitle": "Add link",
+        "editTitle": "Edit link",
+        "platform": "Platform",
+        "urlLabel": "URL *",
+        "save": "Save"
+      }
+    },
+    "booking": {
+      "proLock": "Booking available on Pro plan",
+      "proLockSub": "Let clients book meetings directly from your profile.",
+      "availTitle": "My availability",
+      "saveAvail": "Save availability",
+      "savingAvail": "Saving...",
+      "availSaved": "Availability saved!",
+      "availError": "Failed to save availability",
+      "bookingsTitle": "Bookings",
+      "upcoming": "Upcoming",
+      "history": "History",
+      "emptyUpcoming": "No upcoming bookings",
+      "emptyHistory": "No past bookings",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "confirmBtn": "Confirm",
+      "cancelBtn": "Decline",
+      "confirmOk": "Booking confirmed!",
+      "cancelOk": "Booking declined",
+      "actionError": "Failed to update booking",
+      "cancelConfirm": "Are you sure you want to decline this booking?"
+    },
+    "stats": {
+      "proLock": "Analytics available on Pro plan",
+      "views": "Profile views",
+      "viewsSub": "last 30 days",
+      "services": "Services",
+      "links": "Links",
+      "pendingBookings": "Pending bookings"
+    },
+    "plan": {
+      "freeTitle": "Free plan",
+      "freeFeatures": {
+        "0": "Up to 3 services",
+        "1": "Up to 3 social links",
+        "2": "No meeting booking",
+        "3": "No analytics"
+      },
+      "upgradeBtn": "Upgrade to Pro — $9/mo",
+      "proTitle": "Pro plan",
+      "activeLabel": "Active ✓",
+      "proFeatures": {
+        "0": "✓ Unlimited services & links",
+        "1": "✓ Meeting booking",
+        "2": "✓ View analytics",
+        "3": "✓ Priority support"
+      },
+      "manage": "Manage subscription",
+      "upgradeError": "Failed to create payment session",
+      "manageError": "Failed to open billing portal"
+    },
+    "error": {
+      "generic": "An error occurred",
+      "dismiss": "dismiss"
+    }
+  },
+  "explore": {
+    "title": "Discover professionals",
+    "subtitle": "Find specialists and explore their services.",
+    "searchPlaceholder": "Search by name or field...",
+    "noResults": "No results found.",
+    "empty": "No profiles to show.",
+    "loadMore": "Load more",
+    "loading": "Loading...",
+    "service": "service",
+    "services_few": "services",
+    "viewProfile": "View profile →"
+  },
+  "pricing": {
+    "title": "Simple, honest pricing",
+    "subtitle": "Start for free. Upgrade when you're ready.",
+    "freeTitle": "Free",
+    "freePeriod": "/month",
+    "freeTagline": "Perfect to get started",
+    "proTitle": "Pro",
+    "proPeriod": "/month",
+    "proTagline": "For serious professionals",
+    "popular": "⭐ Most popular",
+    "yourPlan": "Your current plan",
+    "yourPlanPro": "Your current plan ✓",
+    "registerFree": "Sign up for free",
+    "startFree": "Get started free",
+    "upgradePro": "Upgrade to Pro",
+    "stripePowered": "Powered by Stripe. Cancel anytime.",
+    "faqTitle": "Frequently asked questions",
+    "upgradeError": "Failed to create payment session. Please try again.",
+    "freeFeatures": {
+      "0": { "label": "Profile with bio & photo", "included": true },
+      "1": { "label": "Up to 3 services", "included": true },
+      "2": { "label": "Up to 3 social links", "included": true },
+      "3": { "label": "Public URL skedify.io/username", "included": true },
+      "4": { "label": "Meeting booking with calendar", "included": false },
+      "5": { "label": "Contact form", "included": false },
+      "6": { "label": "Custom domain", "included": false },
+      "7": { "label": "View analytics", "included": false }
+    },
+    "proFeatures": {
+      "0": { "label": "Everything in Free", "included": true },
+      "1": { "label": "Unlimited services", "included": true },
+      "2": { "label": "Unlimited links", "included": true },
+      "3": { "label": "Meeting booking with calendar", "included": true },
+      "4": { "label": "Contact form", "included": true },
+      "5": { "label": "Custom domain", "included": true },
+      "6": { "label": "View analytics", "included": true },
+      "7": { "label": "Priority support", "included": true }
+    },
+    "faq": {
+      "0": {
+        "q": "Can I cancel at any time?",
+        "a": "Yes, you can cancel your subscription at any time. Your Pro account will remain active until the end of the billing period."
+      },
+      "1": {
+        "q": "Is my data secure?",
+        "a": "Yes, all data is encrypted. Payments are handled by Stripe — we don't store card details."
+      },
+      "2": {
+        "q": "Do I need a credit card for Free?",
+        "a": "No, the Free plan is completely free and requires no payment information."
+      },
+      "3": {
+        "q": "What happens if I downgrade from Pro to Free?",
+        "a": "Your data stays — you simply lose access to Pro features. Services and links above the limit will be hidden."
+      }
+    }
+  },
+  "success": {
+    "title": "Welcome to Skedify Pro! 🎉",
+    "subtitle": "Your account has been upgraded.",
+    "desc": "You now have access to all Pro features.",
+    "cta": "Go to dashboard",
+    "confirmation": "Confirmation sent to your email.",
+    "features": {
+      "0": { "icon": "📅", "title": "Meeting booking", "desc": "Clients can book sessions directly from your profile" },
+      "1": { "icon": "📊", "title": "View analytics", "desc": "Track who visits your profile and how often" },
+      "2": { "icon": "∞", "title": "Unlimited services & links", "desc": "Add as many as you want — no limits" }
+    }
+  },
+  "notFound": {
+    "title": "Profile not found",
+    "desc": "This user doesn't exist or has changed their link. Check if the address is correct.",
+    "createProfile": "Create your own profile",
+    "goHome": "Back to homepage"
+  },
+  "contact": {
+    "title": "Send a message",
+    "name": "Name",
+    "namePlaceholder": "John Doe",
+    "email": "Email",
+    "message": "Message",
+    "messagePlaceholder": "Hi, I'd like to ask about...",
+    "send": "Send message",
+    "sending": "Sending...",
+    "successTitle": "Message sent!",
+    "successDesc": "{name} will receive your message.",
+    "successBtn": "Send another",
+    "error": "Failed to send message. Please try again.",
+    "minLength": "Message must be at least 10 characters.",
+    "contactBtn": "Get in touch",
+    "writeToMe": "Write to me",
+    "replyHint": "You'll receive a reply at your email."
+  },
+  "booking": {
+    "title": "Book a meeting",
+    "noSlots": "No available time slots.",
+    "formName": "Full name *",
+    "formEmail": "Email address *",
+    "formMessage": "Message (optional)",
+    "submit": "Book meeting",
+    "submitting": "Booking...",
+    "back": "← Back",
+    "error": "Failed to book. Please try again.",
+    "emailError": "Please enter a valid email address",
+    "success": "Booking sent!",
+    "successDesc": "{name} received your request and will confirm via email.",
+    "backToProfile": "Back to profile"
+  },
+  "profile": {
+    "whatIOffer": "What I offer",
+    "openGraph": {
+      "title": "{name} — Skedify",
+      "description": "Professional profile {username} on Skedify"
+    }
+  }
+}

@@ -16,7 +16,7 @@ export default function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.hero}>
-          <Text style={styles.logo}>Linkard</Text>
+          <Text style={styles.logo}>Skedify</Text>
           <Text style={styles.headline}>
             Twój profesjonalny profil{"\n"}w 5 minut
           </Text>
@@ -45,7 +45,7 @@ export default function HomeScreen({ navigation }: Props) {
           {[
             { icon: "👤", title: "Zarejestruj się", desc: "Konto w 30 sekund" },
             { icon: "✏️", title: "Wypełnij profil", desc: "Bio, usługi, linki" },
-            { icon: "🔗", title: "Udostępnij link", desc: "linkard-io.vercel.app/ty" },
+            { icon: "🔗", title: "Udostępnij link", desc: "skedify-io.vercel.app/ty" },
           ].map((step, i) => (
             <View key={i} style={styles.step}>
               <Text style={styles.stepIcon}>{step.icon}</Text>
@@ -56,7 +56,7 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.footer}>
-          linkard-io.vercel.app/twojnazwa
+          skedify-io.vercel.app/twojnazwa
         </Text>
       </ScrollView>
     </SafeAreaView>

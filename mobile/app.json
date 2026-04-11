@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Linkard",
-    "slug": "linkard",
+    "name": "Skedify",
+    "slug": "skedify",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.linkard.app"
+      "bundleIdentifier": "com.skedify.app"
     },
     "android": {
-      "package": "com.linkard.app"
+      "package": "com.skedify.app"
     },
     "plugins": [
       "expo-secure-store"

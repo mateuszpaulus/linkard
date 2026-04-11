@@ -1,0 +1,331 @@
+{
+  "common": {
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "edit": "Edytuj",
+    "delete": "Usuń",
+    "close": "Zamknij",
+    "back": "← Wróć",
+    "loading": "Ładowanie...",
+    "saving": "Zapisuję...",
+    "sending": "Wysyłam...",
+    "yes": "Tak, usuń",
+    "confirm": "Potwierdź",
+    "upgrade": "Upgrade do Pro",
+    "add": "Dodaj",
+    "open": "Otwórz",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano! ✓",
+    "areYouSure": "Czy na pewno?",
+    "close_short": "Zamknij"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "signIn": "Zaloguj się",
+    "signUp": "Zarejestruj się",
+    "signOut": "Wyloguj",
+    "explore": "Odkryj profile",
+    "pricing": "Cennik",
+    "getStarted": "Zacznij za darmo"
+  },
+  "home": {
+    "badge": "Link-in-bio dla profesjonalistów",
+    "hero": "Twój profesjonalny profil w 5 minut",
+    "heroSub": "Jedna strona. Wszystkie Twoje usługi. Jeden link do udostępnienia.",
+    "ctaPrimary": "Stwórz profil za darmo →",
+    "ctaSecondary": "Zobacz przykłady",
+    "joinCount": "Dołącz do 1000+ specjalistów",
+    "howTitle": "Proste jak 1-2-3",
+    "forWhoTitle": "Stworzony dla specjalistów",
+    "featuresTitle": "Wszystko czego potrzebujesz",
+    "readyTitle": "Gotowy żeby zacząć?",
+    "readySub": "Dołącz za darmo. Upgrade gdy jesteś gotowy.",
+    "ctaDashboard": "Przejdź do dashboardu",
+    "ctaFree": "Stwórz profil za darmo",
+    "steps": {
+      "0": { "title": "Zarejestruj się", "desc": "Załóż konto w 30 sekund przez email lub Google" },
+      "1": { "title": "Wypełnij profil", "desc": "Dodaj bio, usługi, ceny i linki społecznościowe" },
+      "2": { "title": "Udostępnij link", "desc": "Jeden link do wszystkiego: skedify.io/twojenazwisko" }
+    },
+    "audiences": {
+      "0": { "title": "Developerzy i IT", "desc": "Pokaż portfolio, stack technologiczny i usługi potencjalnym klientom" },
+      "1": { "title": "Kreatywni", "desc": "Graficy, fotografowie, videografowie — Twoje portfolio zawsze pod ręką" },
+      "2": { "title": "Konsultanci i coachowie", "desc": "Jeden link do oferty, bookingu i kontaktu z klientem" }
+    },
+    "features": {
+      "0": "Publiczny profil z własnym URL",
+      "1": "Lista usług z cenami",
+      "2": "Linki społecznościowe",
+      "3": "Formularz kontaktowy",
+      "4": "System bookingu spotkań",
+      "5": "Własna domena",
+      "6": "Analityki wyświetleń",
+      "7": "Nieograniczone usługi"
+    },
+    "mockContact": "Skontaktuj się",
+    "mockBio": "Full-stack developer pomagający startupom budować produkty."
+  },
+  "auth": {
+    "signInTitle": "Witaj ponownie!",
+    "signInSub": "Zaloguj się i zarządzaj swoim profilem.",
+    "signUpTitle": "Stwórz profesjonalny profil w 5 minut",
+    "signUpSub": "Dołącz do specjalistów, którzy już korzystają z Skedify.",
+    "feat1": "Profil z bio, usługami i cenami",
+    "feat2": "Linki społecznościowe w jednym miejscu",
+    "feat3": "Formularz kontaktowy i booking spotkań"
+  },
+  "dashboard": {
+    "tabs": {
+      "profile": "Profil",
+      "services": "Usługi",
+      "links": "Linki",
+      "booking": "Booking",
+      "stats": "Statystyki",
+      "plan": "Plan"
+    },
+    "profile": {
+      "title": "Twój profil",
+      "create": "Stwórz profil",
+      "yourLink": "Twój link",
+      "usernamePlaceholder": "twoj-username",
+      "usernameError": "3–30 znaków: a-z, 0-9, myślniki",
+      "displayName": "Imię i nazwisko",
+      "displayNamePlaceholder": "np. Jan Kowalski",
+      "bio": "Bio",
+      "bioPlaceholder": "Opowiedz ludziom o sobie...",
+      "location": "Lokalizacja",
+      "locationPlaceholder": "Warszawa, Polska",
+      "website": "Strona internetowa",
+      "websitePlaceholder": "https://twojastrona.pl",
+      "save": "Zapisz profil",
+      "saved": "Profil zapisany!",
+      "saveError": "Błąd zapisu profilu",
+      "publicLink": "Twój publiczny link:",
+      "user": "Użytkownik"
+    },
+    "services": {
+      "title": "Moje usługi",
+      "addBtn": "+ Dodaj usługę",
+      "empty": "Brak usług. Dodaj pierwszą usługę.",
+      "upgradeHint": "Upgrade do Pro dla nieograniczonych usług.",
+      "saved": "Usługa zapisana!",
+      "added": "Usługa dodana!",
+      "deleted": "Usługa usunięta",
+      "saveError": "Błąd zapisu usługi",
+      "deleteError": "Błąd usuwania usługi",
+      "limitHint": "Limit 3 usług w planie Free",
+      "modal": {
+        "addTitle": "Dodaj usługę",
+        "editTitle": "Edytuj usługę",
+        "titleLabel": "Tytuł *",
+        "titlePlaceholder": "np. Konsultacja 1h",
+        "description": "Opis",
+        "descriptionPlaceholder": "Opis usługi (opcjonalnie)",
+        "price": "Cena",
+        "currency": "Waluta",
+        "save": "Zapisz usługę"
+      }
+    },
+    "links": {
+      "title": "Moje linki",
+      "addBtn": "+ Dodaj link",
+      "empty": "Brak linków. Dodaj swoje profile społecznościowe.",
+      "upgradeHint": "Upgrade do Pro dla nieograniczonych linków.",
+      "saved": "Link zapisany!",
+      "added": "Link dodany!",
+      "saveError": "Błąd zapisu linku",
+      "deleteError": "Błąd usuwania linku",
+      "limitHint": "Limit 3 linków w planie Free",
+      "modal": {
+        "addTitle": "Dodaj link",
+        "editTitle": "Edytuj link",
+        "platform": "Platforma",
+        "urlLabel": "URL *",
+        "save": "Zapisz"
+      }
+    },
+    "booking": {
+      "proLock": "Booking dostępny w planie Pro",
+      "proLockSub": "Pozwól klientom rezerwować spotkania bezpośrednio z Twojego profilu.",
+      "availTitle": "Moja dostępność",
+      "saveAvail": "Zapisz dostępność",
+      "savingAvail": "Zapisuję...",
+      "availSaved": "Dostępność zapisana!",
+      "availError": "Błąd zapisu dostępności",
+      "bookingsTitle": "Rezerwacje",
+      "upcoming": "Nadchodzące",
+      "history": "Historia",
+      "emptyUpcoming": "Brak nadchodzących rezerwacji",
+      "emptyHistory": "Brak historycznych rezerwacji",
+      "pending": "Oczekuje",
+      "confirmed": "Potwierdzona",
+      "cancelled": "Odrzucona",
+      "confirmBtn": "Potwierdź",
+      "cancelBtn": "Odrzuć",
+      "confirmOk": "Rezerwacja potwierdzona!",
+      "cancelOk": "Rezerwacja odrzucona",
+      "actionError": "Błąd aktualizacji rezerwacji",
+      "cancelConfirm": "Czy na pewno chcesz odrzucić tę rezerwację?"
+    },
+    "stats": {
+      "proLock": "Statystyki dostępne w planie Pro",
+      "views": "Wyświetlenia profilu",
+      "viewsSub": "ostatnie 30 dni",
+      "services": "Usługi",
+      "links": "Linki",
+      "pendingBookings": "Oczekujące rezerwacje"
+    },
+    "plan": {
+      "freeTitle": "Plan Free",
+      "freeFeatures": {
+        "0": "Do 3 usług",
+        "1": "Do 3 linków społecznościowych",
+        "2": "Brak bookingu spotkań",
+        "3": "Brak analityk"
+      },
+      "upgradeBtn": "Upgrade do Pro — $9/mies.",
+      "proTitle": "Plan Pro",
+      "activeLabel": "Aktywny ✓",
+      "proFeatures": {
+        "0": "✓ Nieograniczone usługi i linki",
+        "1": "✓ Booking spotkań",
+        "2": "✓ Analityki wyświetleń",
+        "3": "✓ Priorytetowe wsparcie"
+      },
+      "manage": "Zarządzaj subskrypcją",
+      "upgradeError": "Błąd tworzenia sesji płatności",
+      "manageError": "Błąd otwarcia portalu płatności"
+    },
+    "error": {
+      "generic": "Wystąpił błąd",
+      "dismiss": "zamknij"
+    }
+  },
+  "explore": {
+    "title": "Odkryj specjalistów",
+    "subtitle": "Znajdź specjalistów i poznaj ich ofertę.",
+    "searchPlaceholder": "Szukaj po nazwie lub branży...",
+    "noResults": "Brak wyników wyszukiwania.",
+    "empty": "Brak profili do wyświetlenia.",
+    "loadMore": "Załaduj więcej",
+    "loading": "Ładuję...",
+    "service": "usługa",
+    "services_few": "usługi",
+    "viewProfile": "Zobacz profil →"
+  },
+  "pricing": {
+    "title": "Prosty, uczciwy cennik",
+    "subtitle": "Zacznij za darmo. Upgrade gdy jesteś gotowy.",
+    "freeTitle": "Free",
+    "freePeriod": "/miesiąc",
+    "freeTagline": "Idealne na start",
+    "proTitle": "Pro",
+    "proPeriod": "/miesiąc",
+    "proTagline": "Dla poważnych profesjonalistów",
+    "popular": "⭐ Najpopularniejszy",
+    "yourPlan": "Twój obecny plan",
+    "yourPlanPro": "Twój obecny plan ✓",
+    "registerFree": "Zarejestruj się za darmo",
+    "startFree": "Zacznij za darmo",
+    "upgradePro": "Przejdź na Pro",
+    "stripePowered": "Płatność przez Stripe. Anuluj w dowolnym momencie.",
+    "faqTitle": "Najczęściej zadawane pytania",
+    "upgradeError": "Błąd podczas tworzenia sesji płatności. Spróbuj ponownie.",
+    "freeFeatures": {
+      "0": { "label": "Profil z bio i zdjęciem", "included": true },
+      "1": { "label": "Do 3 usług", "included": true },
+      "2": { "label": "Do 3 linków społecznościowych", "included": true },
+      "3": { "label": "Publiczny URL skedify.io/username", "included": true },
+      "4": { "label": "Booking spotkań z kalendarzem", "included": false },
+      "5": { "label": "Formularz kontaktowy", "included": false },
+      "6": { "label": "Własna domena", "included": false },
+      "7": { "label": "Analityki wyświetleń", "included": false }
+    },
+    "proFeatures": {
+      "0": { "label": "Wszystko z planu Free", "included": true },
+      "1": { "label": "Nieograniczone usługi", "included": true },
+      "2": { "label": "Nieograniczone linki", "included": true },
+      "3": { "label": "Booking spotkań z kalendarzem", "included": true },
+      "4": { "label": "Formularz kontaktowy", "included": true },
+      "5": { "label": "Własna domena", "included": true },
+      "6": { "label": "Analityki wyświetleń", "included": true },
+      "7": { "label": "Priorytetowe wsparcie", "included": true }
+    },
+    "faq": {
+      "0": {
+        "q": "Czy mogę anulować w dowolnym momencie?",
+        "a": "Tak, możesz anulować subskrypcję w dowolnym momencie. Twoje konto Pro będzie aktywne do końca okresu rozliczeniowego."
+      },
+      "1": {
+        "q": "Czy moje dane są bezpieczne?",
+        "a": "Tak, wszystkie dane są szyfrowane. Płatności obsługuje Stripe — nie przechowujemy danych kart."
+      },
+      "2": {
+        "q": "Czy potrzebuję karty kredytowej na Free?",
+        "a": "Nie, plan Free jest całkowicie darmowy i nie wymaga żadnych danych płatniczych."
+      },
+      "3": {
+        "q": "Co się stanie gdy przejdę na Free z Pro?",
+        "a": "Twoje dane zostają — po prostu stracisz dostęp do funkcji Pro. Usługi i linki ponad limit będą ukryte."
+      }
+    }
+  },
+  "success": {
+    "title": "Witaj w Skedify Pro! 🎉",
+    "subtitle": "Twoje konto zostało ulepszone.",
+    "desc": "Masz teraz dostęp do wszystkich funkcji Pro.",
+    "cta": "Przejdź do dashboardu",
+    "confirmation": "Potwierdzenie wysłane na Twój email.",
+    "features": {
+      "0": { "icon": "📅", "title": "Booking spotkań", "desc": "Klienci mogą rezerwować terminy bezpośrednio z Twojego profilu" },
+      "1": { "icon": "📊", "title": "Analityki wyświetleń", "desc": "Śledź kto odwiedza Twój profil i jak często" },
+      "2": { "icon": "∞", "title": "Nieograniczone usługi i linki", "desc": "Dodawaj ile chcesz — bez limitów" }
+    }
+  },
+  "notFound": {
+    "title": "Nie znaleziono profilu",
+    "desc": "Ten użytkownik nie istnieje lub zmienił swój link. Sprawdź czy adres jest poprawny.",
+    "createProfile": "Stwórz własny profil",
+    "goHome": "Wróć do strony głównej"
+  },
+  "contact": {
+    "title": "Wyślij wiadomość",
+    "name": "Imię",
+    "namePlaceholder": "Jan Kowalski",
+    "email": "Email",
+    "message": "Wiadomość",
+    "messagePlaceholder": "Cześć, chciałbym zapytać o...",
+    "send": "Wyślij wiadomość",
+    "sending": "Wysyłam...",
+    "successTitle": "Wiadomość wysłana!",
+    "successDesc": "{name} otrzyma Twoją wiadomość.",
+    "successBtn": "Wyślij kolejną",
+    "error": "Nie udało się wysłać wiadomości. Spróbuj ponownie.",
+    "minLength": "Wiadomość musi mieć minimum 10 znaków.",
+    "contactBtn": "Skontaktuj się",
+    "writeToMe": "Napisz do mnie",
+    "replyHint": "Odpowiedź otrzymasz na podany email."
+  },
+  "booking": {
+    "title": "Umów spotkanie",
+    "noSlots": "Brak dostępnych godzin.",
+    "formName": "Imię i nazwisko *",
+    "formEmail": "Adres email *",
+    "formMessage": "Wiadomość (opcjonalnie)",
+    "submit": "Zarezerwuj spotkanie",
+    "submitting": "Wysyłanie...",
+    "back": "← Wróć",
+    "error": "Wystąpił błąd. Spróbuj ponownie.",
+    "emailError": "Podaj poprawny adres email",
+    "success": "Rezerwacja wysłana!",
+    "successDesc": "{name} otrzymał Twoją prośbę i potwierdzi ją emailem.",
+    "backToProfile": "Wróć do profilu"
+  },
+  "profile": {
+    "whatIOffer": "Co oferuję",
+    "openGraph": {
+      "title": "{name} — Skedify",
+      "description": "Profesjonalny profil {username} na Skedify"
+    }
+  }
+}

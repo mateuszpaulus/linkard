@@ -1,0 +1,185 @@
+# ══════════════════════════════════════════════════════════════
+#  Linkard API — testy lokalne
+#  Użyj: VS Code REST Client (ext: humao.rest-client)
+#         lub: IntelliJ HTTP Client
+#
+#  Backend musi działać na: http://localhost:8080
+#  Profil: local (bez auth — wszystkie /me/* = local_test_user)
+# ══════════════════════════════════════════════════════════════
+
+@base = http://localhost:8080
+@username = anna-kowalska
+
+###  ── HEALTH ─────────────────────────────────────────────────
+
+### Health check
+GET {{base}}/actuator/health
+
+###  ── PUBLIC: Profile ────────────────────────────────────────
+
+### Lista profili (explore)
+GET {{base}}/api/profiles?page=0&size=12
+
+### Lista profili z wyszukiwaniem
+GET {{base}}/api/profiles?search=developer
+
+### Publiczny profil
+GET {{base}}/api/p/{{username}}
+
+### Publiczna dostępność (booking)
+GET {{base}}/api/p/{{username}}/availability
+
+### Zajęte sloty na datę
+GET {{base}}/api/p/{{username}}/booked-slots?date=2026-04-15
+
+###  ── PUBLIC: Kontakt ────────────────────────────────────────
+
+### Wyślij wiadomość kontaktową
+POST {{base}}/api/p/{{username}}/contact
+Content-Type: application/json
+
+{
+  "name": "Jan Testowy",
+  "email": "jan@test.pl",
+  "message": "Hej! Chciałbym porozmawiać o współpracy. Kiedy masz czas na krótką rozmowę?"
+}
+
+###  ── PUBLIC: Booking ────────────────────────────────────────
+
+### Utwórz rezerwację
+POST {{base}}/api/p/{{username}}/book
+Content-Type: application/json
+
+{
+  "clientName": "Piotr Klient",
+  "clientEmail": "piotr@klient.pl",
+  "clientMessage": "Chciałbym omówić projekt MVP.",
+  "date": "2026-04-20",
+  "startTime": "10:00",
+  "endTime": "11:00"
+}
+
+###  ── MY PROFILE (local_test_user, bez auth) ─────────────────
+
+### Mój profil
+GET {{base}}/api/me/profile
+
+### Utwórz profil
+POST {{base}}/api/me/profile
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "displayName": "Test User",
+  "bio": "Lokalny użytkownik testowy",
+  "location": "Warsaw",
+  "websiteUrl": "https://example.com"
+}
+
+### Zaktualizuj profil
+PATCH {{base}}/api/me/profile
+Content-Type: application/json
+
+{
+  "displayName": "Test User Updated",
+  "bio": "Zaktualizowane bio"
+}
+
+### Statystyki
+GET {{base}}/api/me/stats
+
+###  ── SERVICES ───────────────────────────────────────────────
+
+### Moje usługi
+GET {{base}}/api/me/services
+
+### Dodaj usługę
+POST {{base}}/api/me/services
+Content-Type: application/json
+
+{
+  "title": "Konsultacja 1h",
+  "description": "Godzinne spotkanie online — omówimy Twój projekt",
+  "price": 300,
+  "currency": "PLN",
+  "priceLabel": "/h"
+}
+
+### Edytuj usługę (podmień ID)
+PATCH {{base}}/api/me/services/PASTE-SERVICE-UUID-HERE
+Content-Type: application/json
+
+{
+  "price": 350,
+  "priceLabel": "/sesja"
+}
+
+### Usuń usługę
+DELETE {{base}}/api/me/services/PASTE-SERVICE-UUID-HERE
+
+###  ── LINKS ──────────────────────────────────────────────────
+
+### Moje linki
+GET {{base}}/api/me/links
+
+### Dodaj link
+POST {{base}}/api/me/links
+Content-Type: application/json
+
+{
+  "label": "LinkedIn",
+  "url": "https://linkedin.com/in/testuser",
+  "iconName": "linkedin"
+}
+
+### Usuń link
+DELETE {{base}}/api/me/links/PASTE-LINK-UUID-HERE
+
+###  ── AVAILABILITY (wymaga PRO w bazie) ──────────────────────
+
+### Moja dostępność
+GET {{base}}/api/me/availability
+
+### Zapisz dostępność (pon-pt 9-17)
+PUT {{base}}/api/me/availability
+Content-Type: application/json
+
+[
+  { "dayOfWeek": 0, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 2, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 3, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 4, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 5, "startTime": "10:00", "endTime": "14:00", "isActive": false },
+  { "dayOfWeek": 6, "startTime": "10:00", "endTime": "14:00", "isActive": false }
+]
+
+###  ── BOOKINGS ────────────────────────────────────────────────
+
+### Moje rezerwacje
+GET {{base}}/api/me/bookings
+
+### Potwierdź rezerwację (podmień ID)
+PATCH {{base}}/api/me/bookings/PASTE-BOOKING-UUID-HERE/confirm
+
+### Anuluj rezerwację
+PATCH {{base}}/api/me/bookings/PASTE-BOOKING-UUID-HERE/cancel
+
+###  ── STRIPE (wymaga kluczy w application-local.properties) ──
+
+### Info o subskrypcji
+GET {{base}}/api/me/subscription
+
+### Utwórz sesję Stripe Checkout
+POST {{base}}/api/me/create-checkout-session
+Content-Type: application/json
+
+###  ── STRIPE WEBHOOK (test manualny) ────────────────────────
+
+### Symuluj checkout.session.completed
+### (użyj Stripe CLI: stripe trigger checkout.session.completed)
+POST {{base}}/api/webhooks/stripe
+Content-Type: application/json
+Stripe-Signature: t=1234,v1=test
+
+{}

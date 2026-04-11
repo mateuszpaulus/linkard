@@ -20,7 +20,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
     if (!cloudName || !uploadPreset) {
-      setError("Konfiguracja uploadu nie jest gotowa.");
+      setError("Upload configuration is not ready.");
       return;
     }
 
@@ -44,7 +44,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
       setPreview(url);
       onUploaded(url);
     } catch {
-      setError("Błąd uploadu. Spróbuj ponownie.");
+      setError("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -54,7 +54,7 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      setError("Zdjęcie musi być mniejsze niż 2 MB.");
+      setError("Image must be smaller than 2 MB.");
       e.target.value = "";
       return;
     }
@@ -100,12 +100,12 @@ export function ImageUpload({ currentUrl, initials, onUploaded }: ImageUploadPro
         className="hidden"
       />
       {uploading && (
-        <p className="text-xs text-[#6B7280]">Przesyłam...</p>
+        <p className="text-xs text-[#6B7280]">Uploading...</p>
       )}
       {error && (
         <p className="text-xs text-[#EF4444]">{error}</p>
       )}
-      <p className="text-xs text-[#6B7280]">Kliknij aby zmienić zdjęcie</p>
+      <p className="text-xs text-[#6B7280]">Click to change photo</p>
     </div>
   );
 }

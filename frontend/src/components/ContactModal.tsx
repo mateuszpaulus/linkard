@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { sendContact } from "@/lib/api";
+import { useTranslation } from "@/lib/i18n";
 
 interface Props {
   username: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function ContactModal({ username, displayName }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
   const [sending, setSending] = useState(false);
@@ -24,7 +26,7 @@ export function ContactModal({ username, displayName }: Props) {
       setSent(true);
       setForm({ name: "", email: "", message: "" });
     } catch {
-      setError("Nie udało się wysłać wiadomości. Spróbuj ponownie.");
+      setError(t("contact.error"));
     } finally {
       setSending(false);
     }
@@ -46,7 +48,7 @@ export function ContactModal({ username, displayName }: Props) {
           <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
           <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
         </svg>
-        Skontaktuj się
+        {t("contact.contactBtn")}
       </button>
 
       {open && (
@@ -57,25 +59,25 @@ export function ContactModal({ username, displayName }: Props) {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-zinc-900">
             {sent ? (
               <div className="py-4 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl dark:bg-green-900">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl dark:bg-green-900/30">
                   ✓
                 </div>
-                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Wiadomość wysłana!</h3>
-                <p className="mt-2 text-sm text-zinc-500">
-                  {displayName ?? username} otrzyma Twoją wiadomość.
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">{t("contact.successTitle")}</h3>
+                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                  {t("contact.successDesc", { name: displayName ?? username })}
                 </p>
                 <button
                   onClick={handleClose}
                   className="mt-6 rounded-lg bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900"
                 >
-                  Zamknij
+                  {t("common.close_short")}
                 </button>
               </div>
             ) : (
               <>
                 <div className="mb-5 flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                    Wyślij wiadomość
+                    {t("contact.title")}
                   </h3>
                   <button
                     onClick={handleClose}
@@ -96,11 +98,11 @@ export function ContactModal({ username, displayName }: Props) {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Imię
+                      {t("contact.name")}
                     </label>
                     <input
                       required
-                      placeholder="Jan Kowalski"
+                      placeholder={t("contact.namePlaceholder")}
                       value={form.name}
                       onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                       className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -108,12 +110,12 @@ export function ContactModal({ username, displayName }: Props) {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Email
+                      {t("contact.email")}
                     </label>
                     <input
                       required
                       type="email"
-                      placeholder="jan@example.com"
+                      placeholder="you@example.com"
                       value={form.email}
                       onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                       className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -121,11 +123,11 @@ export function ContactModal({ username, displayName }: Props) {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Wiadomość
+                      {t("contact.message")}
                     </label>
                     <textarea
                       required
-                      placeholder="Cześć, chciałbym zapytać o..."
+                      placeholder={t("contact.messagePlaceholder")}
                       value={form.message}
                       onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                       rows={4}
@@ -138,7 +140,7 @@ export function ContactModal({ username, displayName }: Props) {
                     disabled={sending}
                     className="w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
-                    {sending ? "Wysyłam..." : "Wyślij wiadomość"}
+                    {sending ? t("contact.sending") : t("contact.send")}
                   </button>
                 </form>
               </>

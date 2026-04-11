@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { RootNavigator } from "./src/navigation";
 
-// SecureStore token cache z fallbackiem — działa w Expo Go i w buildach
+// SecureStore token cache with fallback — works in Expo Go and production builds
 const tokenCache = {
   async getToken(key: string) {
     try {
