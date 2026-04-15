@@ -4,11 +4,11 @@ import io.skedify.backend.dto.*;
 import io.skedify.backend.entity.*;
 import io.skedify.backend.repository.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -139,13 +139,13 @@ public class BookingService {
                 .filter(a -> a.isActive() && a.getDayOfWeek() == dayOfWeek)
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY, "No availability on this day"));
+                        HttpStatusCode.valueOf(422), "No availability on this day"));
 
         if (request.startTime().isBefore(availability.getStartTime()) ||
                 request.endTime().isAfter(availability.getEndTime()) ||
                 !request.startTime().isBefore(request.endTime())) {
             throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_ENTITY, "Requested time is outside available hours");
+                    HttpStatusCode.valueOf(422), "Requested time is outside available hours");
         }
 
         boolean conflict = bookingRepository

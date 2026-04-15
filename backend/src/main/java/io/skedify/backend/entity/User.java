@@ -43,6 +43,6 @@ public class User {
     @Column(updatable = false)
     private Instant createdAt = Instant.now();
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Profile profile;
 }

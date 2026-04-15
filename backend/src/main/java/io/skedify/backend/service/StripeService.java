@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -171,19 +172,20 @@ public class StripeService {
                     String plan = u.getSubscriptionStatus() != null
                             ? u.getSubscriptionStatus().name() : "FREE";
                     boolean isPro = "PRO".equals(plan);
-                    return Map.<String, Object>of(
-                            "plan", plan,
-                            "status", plan,
-                            "isPro", isPro,
-                            "renewalDate", (Object) null
-                    );
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("plan", plan);
+                    result.put("status", plan);
+                    result.put("isPro", isPro);
+                    result.put("renewalDate", null);
+                    return result;
                 })
-                .orElse(Map.of("plan", "FREE", "status", "FREE", "isPro", false, "renewalDate", (Object) null));
-    }
-
-    public boolean isPro(String clerkId) {
-        return userRepository.findByClerkId(clerkId)
-                .map(u -> u.getSubscriptionStatus() == User.SubscriptionStatus.PRO)
-                .orElse(false);
+                .orElseGet(() -> {
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("plan", "FREE");
+                    result.put("status", "FREE");
+                    result.put("isPro", false);
+                    result.put("renewalDate", null);
+                    return result;
+                });
     }
 }

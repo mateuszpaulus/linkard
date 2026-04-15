@@ -6,6 +6,7 @@ import io.skedify.backend.repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -231,7 +232,7 @@ public class ProfileService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
         String ownerEmail = profile.getUser().getEmail();
         if (ownerEmail == null || ownerEmail.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Owner email not set");
+            throw new ResponseStatusException(HttpStatusCode.valueOf(422), "Owner email not set");
         }
         emailService.sendContactEmail(
                 ownerEmail,

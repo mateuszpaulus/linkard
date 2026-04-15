@@ -46,7 +46,7 @@ public class WebhookController {
         verifyClerkSignature(request, rawBody);
 
         JsonNode payload = objectMapper.readTree(rawBody);
-        String type = payload.path("type").asText();
+        String type = payload.path("type").stringValue();
 
         if (!"user.created".equals(type)) {
             log.debug("Ignoring Clerk webhook event: {}", type);
@@ -54,13 +54,12 @@ public class WebhookController {
         }
 
         JsonNode data = payload.path("data");
-        String clerkId = data.path("id").asText();
+        String clerkId = data.path("id").stringValue();
         String email = data.path("email_addresses")
                 .path(0)
-                .path("email_address")
-                .asText();
+                .path("email_address").stringValue();
 
-        if (clerkId.isEmpty() || email.isEmpty()) {
+        if (clerkId == null || clerkId.isEmpty() || email == null || email.isEmpty()) {
             log.warn("Clerk webhook missing clerkId or email");
             return;
         }

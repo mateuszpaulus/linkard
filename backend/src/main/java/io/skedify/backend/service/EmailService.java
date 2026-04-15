@@ -72,7 +72,6 @@ public class EmailService {
         String ownerEmail = profile.getUser().getEmail();
         if (ownerEmail == null || ownerEmail.isBlank()) return;
 
-        String ownerName = profile.getDisplayName() != null ? profile.getDisplayName() : profile.getUsername();
         sendEmail(
                 ownerEmail,
                 "New booking from " + booking.getClientName(),
