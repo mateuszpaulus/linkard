@@ -1,7 +1,6 @@
 package io.skedify.backend.controller;
 
 import io.skedify.backend.service.StripeService;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -37,14 +36,5 @@ public class SubscriptionController {
     @GetMapping("/me/subscription")
     public Map<String, Object> getSubscription(@AuthenticationPrincipal Jwt jwt) {
         return stripeService.getSubscriptionInfo(clerkId(jwt));
-    }
-
-    @PostMapping("/webhooks/stripe")
-    @ResponseStatus(HttpStatus.OK)
-    public void stripeWebhook(
-            @RequestBody String payload,
-            @RequestHeader("Stripe-Signature") String sigHeader
-    ) {
-        stripeService.handleWebhook(payload, sigHeader);
     }
 }

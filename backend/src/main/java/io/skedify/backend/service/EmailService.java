@@ -2,8 +2,7 @@ package io.skedify.backend.service;
 
 import io.skedify.backend.entity.Booking;
 import io.skedify.backend.entity.Profile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,9 +15,8 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class EmailService {
-
-    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     @Value("${resend.api-key:}")
     private String resendApiKey;
@@ -26,7 +24,11 @@ public class EmailService {
     @Value("${resend.from-email:noreply@skedify.io}")
     private String fromEmail;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public EmailService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public void sendEmail(String to, String subject, String htmlBody) {
         if (resendApiKey == null || resendApiKey.isBlank()) {
@@ -52,10 +54,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * Contact form — notifies profile owner.
-     * Called from ProfileService.sendContact()
-     */
     public void sendContactEmail(String ownerEmail, String ownerDisplayName,
                                   String clientName, String clientEmail, String message) {
         sendEmail(
@@ -70,10 +68,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * New booking — notifies profile owner.
-     * Called from BookingService.createBooking()
-     */
     public void sendNewBookingNotification(Profile profile, Booking booking) {
         String ownerEmail = profile.getUser().getEmail();
         if (ownerEmail == null || ownerEmail.isBlank()) return;
@@ -93,10 +87,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * Booking confirmed — notifies client.
-     * Called from BookingService.confirmBooking()
-     */
     public void sendBookingConfirmation(Profile profile, Booking booking) {
         String ownerName = profile.getDisplayName() != null ? profile.getDisplayName() : profile.getUsername();
         sendEmail(
@@ -109,10 +99,6 @@ public class EmailService {
         );
     }
 
-    /**
-     * Payment failed — notifies customer.
-     * Called from StripeService.handlePaymentFailed()
-     */
     public void sendPaymentFailedEmail(String customerEmail) {
         sendEmail(
                 customerEmail,

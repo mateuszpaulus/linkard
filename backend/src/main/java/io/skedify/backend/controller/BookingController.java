@@ -28,8 +28,6 @@ public class BookingController {
         return jwt != null ? jwt.getSubject() : LOCAL_TEST_CLERK_ID;
     }
 
-    // ── Availability ──
-
     @GetMapping("/me/availability")
     public List<AvailabilitySlot> getMyAvailability(@AuthenticationPrincipal Jwt jwt) {
         return bookingService.getMyAvailability(clerkId(jwt));
@@ -45,8 +43,6 @@ public class BookingController {
     public List<AvailabilitySlot> getPublicAvailability(@PathVariable("username") String username) {
         return bookingService.getPublicAvailability(username);
     }
-
-    // ── Bookings ──
 
     @PostMapping("/p/{username}/book")
     @ResponseStatus(HttpStatus.CREATED)

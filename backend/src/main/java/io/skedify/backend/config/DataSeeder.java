@@ -2,8 +2,7 @@ package io.skedify.backend.config;
 
 import io.skedify.backend.entity.*;
 import io.skedify.backend.repository.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -13,14 +12,10 @@ import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
 
-/**
- * Seeds demo profiles on startup if they do not already exist.
- * Safe to run multiple times — checks by username before inserting.
- */
 @Component
+@org.springframework.context.annotation.Profile("local")
+@Slf4j
 public class DataSeeder implements ApplicationRunner {
-
-    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
@@ -86,7 +81,6 @@ public class DataSeeder implements ApplicationRunner {
             )
         );
 
-        // Ensure local_test_user has PRO plan so all features work locally
         userRepository.findByClerkId("local_test_user").ifPresent(u -> {
             if (u.getSubscriptionStatus() != User.SubscriptionStatus.PRO) {
                 u.setSubscriptionStatus(User.SubscriptionStatus.PRO);
@@ -150,7 +144,6 @@ public class DataSeeder implements ApplicationRunner {
 
         profileRepository.save(profile);
 
-        // Seed Mon–Fri 9:00–17:00 availability so BookingWidget is visible on public profile
         for (int dow = 0; dow <= 4; dow++) {
             Availability avail = new Availability();
             avail.setProfile(profile);

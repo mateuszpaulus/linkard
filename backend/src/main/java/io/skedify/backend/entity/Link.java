@@ -2,11 +2,15 @@ package io.skedify.backend.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "links")
+@Getter
+@Setter
 public class Link {
 
     @Id
@@ -28,26 +32,4 @@ public class Link {
     private int displayOrder = 0;
 
     private boolean active = true;
-
-    public Link() {}
-
-    public UUID getId() { return id; }
-
-    public Profile getProfile() { return profile; }
-    public void setProfile(Profile profile) { this.profile = profile; }
-
-    public String getLabel() { return label; }
-    public void setLabel(String label) { this.label = label; }
-
-    public String getUrl() { return url; }
-    public void setUrl(String url) { this.url = url; }
-
-    public String getIconName() { return iconName; }
-    public void setIconName(String iconName) { this.iconName = iconName; }
-
-    public int getDisplayOrder() { return displayOrder; }
-    public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
-
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
 }

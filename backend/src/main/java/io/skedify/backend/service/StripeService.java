@@ -12,8 +12,7 @@ import com.stripe.param.checkout.SessionCreateParams;
 import io.skedify.backend.entity.User;
 import io.skedify.backend.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,9 +22,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class StripeService {
-
-    private static final Logger log = LoggerFactory.getLogger(StripeService.class);
 
     @Value("${stripe.secret-key:}")
     private String stripeSecretKey;
@@ -68,7 +66,6 @@ public class StripeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         try {
-            // Create or reuse Stripe customer
             String customerId = user.getStripeCustomerId();
             if (customerId == null) {
                 CustomerCreateParams customerParams = CustomerCreateParams.builder()

@@ -3,7 +3,6 @@ package io.skedify.backend.controller;
 import io.skedify.backend.dto.*;
 import io.skedify.backend.service.ProfileService;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -33,8 +32,6 @@ public class ProfileController {
         return jwt != null ? jwt.getClaimAsString("email") : LOCAL_TEST_EMAIL;
     }
 
-    // ── Public ──
-
     @GetMapping("/p/{username}")
     public ProfileResponse getPublicProfile(@PathVariable("username") String username) {
         return profileService.getPublicProfile(username);
@@ -48,18 +45,16 @@ public class ProfileController {
     }
 
     @GetMapping("/profiles")
-    public Page<ProfileSummaryResponse> listProfiles(
+    public PageResponse<ProfileSummaryResponse> listProfiles(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "12") int size,
             @RequestParam(name = "search", required = false) String search) {
         return profileService.getPublicProfiles(page, size, search);
     }
 
-    // ── Authenticated ──
-
     @GetMapping("/me/profile")
     public ProfileResponse getMyProfile(@AuthenticationPrincipal Jwt jwt) {
-        return profileService.getMyProfile(clerkId(jwt), email(jwt));
+        return profileService.getMyProfile(clerkId(jwt));
     }
 
     @PostMapping("/me/profile")

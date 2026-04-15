@@ -4,7 +4,6 @@ import io.skedify.backend.dto.*;
 import io.skedify.backend.entity.*;
 import io.skedify.backend.repository.*;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -46,9 +45,8 @@ public class ProfileService {
         return toPublicResponse(profile);
     }
 
-    @Transactional
-    public ProfileResponse getMyProfile(String clerkId, String email) {
-        ensureUserExists(clerkId, email);
+    @Transactional(readOnly = true)
+    public ProfileResponse getMyProfile(String clerkId) {
         return profileRepository.findByUserClerkId(clerkId)
                 .map(this::toResponse)
                 .orElse(emptyProfileResponse());
@@ -88,11 +86,11 @@ public class ProfileService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ProfileSummaryResponse> getPublicProfiles(int page, int size, String search) {
+    public PageResponse<ProfileSummaryResponse> getPublicProfiles(int page, int size, String search) {
         int safeSize = Math.min(size, 24);
         String q = (search != null && !search.isBlank()) ? search.trim() : null;
-        return profileRepository.searchProfiles(q, PageRequest.of(page, safeSize))
-                .map(this::toSummaryResponse);
+        return PageResponse.from(profileRepository.searchProfiles(q, PageRequest.of(page, safeSize))
+                .map(this::toSummaryResponse));
     }
 
     private User ensureUserExists(String clerkId, String email) {
@@ -110,12 +108,7 @@ public class ProfileService {
 
     @Transactional
     public ProfileResponse createOrUpdateProfile(String clerkId, String email, ProfileRequest request) {
-        User user = userRepository.findByClerkId(clerkId).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setClerkId(clerkId);
-            newUser.setEmail(email);
-            return userRepository.save(newUser);
-        });
+        User user = ensureUserExists(clerkId, email);
 
         Profile profile = profileRepository.findByUserClerkId(clerkId).orElseGet(() -> {
             Profile newProfile = new Profile();
@@ -249,7 +242,6 @@ public class ProfileService {
         );
     }
 
-    /** Full response including plan — for authenticated endpoints. */
     private ProfileResponse toResponse(Profile profile) {
         List<ServiceResponse> services = profile.getServices().stream()
                 .filter(io.skedify.backend.entity.Service::isActive)
@@ -276,7 +268,6 @@ public class ProfileService {
         );
     }
 
-    /** Public response — plan is null (not exposed publicly). */
     private ProfileResponse toPublicResponse(Profile profile) {
         List<ServiceResponse> services = profile.getServices().stream()
                 .filter(io.skedify.backend.entity.Service::isActive)

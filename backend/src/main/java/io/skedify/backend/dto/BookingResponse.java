@@ -1,11 +1,12 @@
 package io.skedify.backend.dto;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.UUID;
 
 public record BookingResponse(
-        String id,
+        UUID id,
         String clientName,
         String clientEmail,
         String clientMessage,
@@ -13,5 +14,5 @@ public record BookingResponse(
         LocalTime startTime,
         LocalTime endTime,
         String status,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {}

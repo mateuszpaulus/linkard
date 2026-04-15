@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -78,6 +79,8 @@ public class BookingService {
         Profile profile = profileRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
 
+        validateSlotAvailable(profile, request);
+
         Booking booking = new Booking();
         booking.setProfile(profile);
         booking.setClientName(request.clientName());
@@ -127,6 +130,35 @@ public class BookingService {
         return toBookingResponse(bookingRepository.save(booking));
     }
 
+    private void validateSlotAvailable(Profile profile, BookingRequest request) {
+        int dayOfWeek = request.date().getDayOfWeek().getValue() - 1;
+
+        Availability availability = availabilityRepository
+                .findByProfileIdOrderByDayOfWeekAsc(profile.getId())
+                .stream()
+                .filter(a -> a.isActive() && a.getDayOfWeek() == dayOfWeek)
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNPROCESSABLE_ENTITY, "No availability on this day"));
+
+        if (request.startTime().isBefore(availability.getStartTime()) ||
+                request.endTime().isAfter(availability.getEndTime()) ||
+                !request.startTime().isBefore(request.endTime())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY, "Requested time is outside available hours");
+        }
+
+        boolean conflict = bookingRepository
+                .findByProfileIdAndDateAndStatusNot(profile.getId(), request.date(), Booking.Status.CANCELLED)
+                .stream()
+                .anyMatch(b -> request.startTime().isBefore(b.getEndTime()) &&
+                        request.endTime().isAfter(b.getStartTime()));
+
+        if (conflict) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This time slot is already booked");
+        }
+    }
+
     private Booking getOwnedBooking(String clerkId, UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Booking not found"));
@@ -142,7 +174,7 @@ public class BookingService {
 
     private BookingResponse toBookingResponse(Booking b) {
         return new BookingResponse(
-                b.getId().toString(),
+                b.getId(),
                 b.getClientName(),
                 b.getClientEmail(),
                 b.getClientMessage(),

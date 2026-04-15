@@ -1,12 +1,16 @@
 package io.skedify.backend.entity;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "availabilities")
+@Getter
+@Setter
 public class Availability {
 
     @Id
@@ -18,7 +22,7 @@ public class Availability {
     private Profile profile;
 
     @Column(nullable = false)
-    private int dayOfWeek; // 0=Mon, 6=Sun
+    private int dayOfWeek;
 
     @Column(nullable = false)
     private LocalTime startTime;
@@ -28,23 +32,4 @@ public class Availability {
 
     @Column(nullable = false)
     private boolean isActive = true;
-
-    public Availability() {}
-
-    public UUID getId() { return id; }
-
-    public Profile getProfile() { return profile; }
-    public void setProfile(Profile profile) { this.profile = profile; }
-
-    public int getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(int dayOfWeek) { this.dayOfWeek = dayOfWeek; }
-
-    public LocalTime getStartTime() { return startTime; }
-    public void setStartTime(LocalTime startTime) { this.startTime = startTime; }
-
-    public LocalTime getEndTime() { return endTime; }
-    public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
-
-    public boolean isActive() { return isActive; }
-    public void setActive(boolean active) { this.isActive = active; }
 }
