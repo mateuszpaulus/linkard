@@ -17,7 +17,8 @@
     "copy": "Copy",
     "copied": "Copied! ✓",
     "areYouSure": "Are you sure?",
-    "close_short": "Close"
+    "close_short": "Close",
+    "clear": "Clear"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -31,7 +32,18 @@
   "home": {
     "badge": "Link-in-bio for professionals",
     "hero": "Your professional profile in 5 minutes",
+    "heroLine": {
+      "before": "Your ",
+      "emphasis": "professional",
+      "after": " profile in 5 minutes"
+    },
     "heroSub": "One page. All your services. One link to share.",
+    "eyebrows": {
+      "how": "How it works",
+      "forWho": "Who it's for",
+      "features": "Features"
+    },
+    "proBadge": "Pro",
     "ctaPrimary": "Create free profile →",
     "ctaSecondary": "See examples",
     "joinCount": "Join 1000+ professionals",
@@ -101,11 +113,15 @@
       "saved": "Profile saved!",
       "saveError": "Failed to save profile",
       "publicLink": "Your public link:",
-      "user": "User"
+      "user": "User",
+      "theme": "Accent color",
+      "themeDesc": "Choose the accent color for your public profile.",
+      "themeDefault": "Default",
+      "themeProLock": "Available on Pro"
     },
     "services": {
       "title": "My services",
-      "addBtn": "+ Add service",
+      "addBtn": "Add service",
       "empty": "No services yet. Add your first service.",
       "upgradeHint": "Upgrade to Pro for unlimited services.",
       "saved": "Service saved!",
@@ -128,7 +144,7 @@
     },
     "links": {
       "title": "My links",
-      "addBtn": "+ Add link",
+      "addBtn": "Add link",
       "empty": "No links yet. Add your social profiles.",
       "upgradeHint": "Upgrade to Pro for unlimited links.",
       "saved": "Link saved!",
@@ -170,10 +186,15 @@
     "stats": {
       "proLock": "Analytics available on Pro plan",
       "views": "Profile views",
-      "viewsSub": "last 30 days",
+      "viewsSub": "total",
       "services": "Services",
       "links": "Links",
-      "pendingBookings": "Pending bookings"
+      "pendingBookings": "Pending bookings",
+      "contacts": "Messages received",
+      "bookings": "Bookings made",
+      "conversion": "Conversion rate",
+      "conversionSub": "messages + bookings ÷ views",
+      "funnelTitle": "Funnel"
     },
     "plan": {
       "freeTitle": "Free plan",
@@ -194,7 +215,13 @@
       },
       "manage": "Manage subscription",
       "upgradeError": "Failed to create payment session",
-      "manageError": "Failed to open billing portal"
+      "manageError": "Failed to open billing portal",
+      "emailDiagTitle": "Email diagnostics",
+      "emailDiagDesc": "Send a test email to your account address to verify delivery is working.",
+      "testEmailBtn": "Send test email",
+      "testEmailSending": "Sending…",
+      "testEmailSent": "Test email sent! Check your inbox.",
+      "testEmailError": "Failed to send test email. Check Resend configuration."
     },
     "error": {
       "generic": "An error occurred",
@@ -206,6 +233,7 @@
     "subtitle": "Find specialists and explore their services.",
     "searchPlaceholder": "Search by name or field...",
     "noResults": "No results found.",
+    "noResultsFor": "No profiles found for \"{search}\"",
     "empty": "No profiles to show.",
     "loadMore": "Load more",
     "loading": "Loading...",
@@ -306,6 +334,11 @@
     "writeToMe": "Write to me",
     "replyHint": "You'll receive a reply at your email."
   },
+  "bookPage": {
+    "metaTitle": "Book a meeting with {name}",
+    "metaDesc": "Pick a time that works for you.",
+    "heading": "Book a meeting with {name}"
+  },
   "booking": {
     "title": "Book a meeting",
     "noSlots": "No available time slots.",
@@ -323,9 +356,34 @@
   },
   "profile": {
     "whatIOffer": "What I offer",
+    "poweredBy": "Powered by",
+    "shareBtn": "Share",
+    "getInTouch": {
+      "book": "Book a call",
+      "message": "Send message"
+    },
+    "share": {
+      "title": "Share this profile",
+      "linkLabel": "Profile link",
+      "copy": "Copy",
+      "copied": "Copied! ✓",
+      "qrHint": "Or scan the QR code",
+      "nativeShare": "Share via…"
+    },
     "openGraph": {
       "title": "{name} — Skedify",
       "description": "Professional profile {username} on Skedify"
+    }
+  },
+  "date": {
+    "daysShort": {
+      "0": "Mo",
+      "1": "Tu",
+      "2": "We",
+      "3": "Th",
+      "4": "Fr",
+      "5": "Sa",
+      "6": "Su"
     }
   }
 }

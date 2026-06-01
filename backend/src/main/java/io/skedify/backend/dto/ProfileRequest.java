@@ -9,5 +9,7 @@ public record ProfileRequest(
         String bio,
         String avatarUrl,
         String location,
-        String websiteUrl
+        String websiteUrl,
+        @Pattern(regexp = "^#[0-9A-Fa-f]{6}$", message = "Theme color must be a hex like #3B82F6")
+        String themeColor
 ) {}

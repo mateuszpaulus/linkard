@@ -2,11 +2,14 @@
 
 import { ThemeProvider } from "next-themes";
 import { LocaleProvider } from "@/lib/i18n";
+import { ToastProvider } from "@/lib/toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <LocaleProvider>{children}</LocaleProvider>
+      <LocaleProvider>
+        <ToastProvider>{children}</ToastProvider>
+      </LocaleProvider>
     </ThemeProvider>
   );
 }

@@ -11,10 +11,12 @@ import {
   addService,
   updateService,
   deleteService,
+  reorderServices,
   getMyLinks,
   addLink,
   updateLink,
   deleteLink,
+  reorderLinks,
   getMyAvailability,
   saveMyAvailability,
   getMyBookings,
@@ -22,14 +24,15 @@ import {
   cancelBooking,
   createCheckoutSession,
   getCustomerPortalUrl,
-  type AvailabilitySlot,
-  type BookingResponse,
+  sendTestEmail,
 } from "@/lib/api";
 import type {
   ProfileResponse,
   ServiceResponse,
   LinkResponse,
   StatsResponse,
+  AvailabilitySlot,
+  BookingResponse,
 } from "@/types";
 
 export const DEFAULT_AVAILABILITY: AvailabilitySlot[] = Array.from({ length: 7 }, (_, i) => ({
@@ -43,8 +46,6 @@ export function hasProfile(p: ProfileResponse | null): boolean {
   return p !== null && p.username !== null && p.username !== "";
 }
 
-export type ToastState = { message: string; type: "success" | "error" | "info" | "warning" } | null;
-
 export function useDashboard() {
   const { getToken } = useAuth();
 
@@ -55,10 +56,18 @@ export function useDashboard() {
   const [availability, setAvailability] = useState<AvailabilitySlot[]>(DEFAULT_AVAILABILITY);
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<ToastState>(null);
 
   const plan = profile?.plan ?? "FREE";
   const isPro = plan === "PRO";
+
+  const withToken = useCallback(
+    async <T,>(fn: (token: string) => Promise<T>): Promise<T> => {
+      const token = await getToken();
+      if (!token) throw new Error("No token");
+      return fn(token);
+    },
+    [getToken]
+  );
 
   const loadData = useCallback(async () => {
     const token = await getToken();
@@ -100,7 +109,6 @@ export function useDashboard() {
     loadData();
   }, [loadData]);
 
-  // ── Profile ──
   const saveProfile = async (form: {
     username: string;
     displayName: string;
@@ -108,103 +116,118 @@ export function useDashboard() {
     avatarUrl: string;
     location: string;
     websiteUrl: string;
-  }) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const saved = hasProfile(profile)
-      ? await updateProfile(token, form)
-      : await createProfile(token, form);
-    setProfile(saved);
-    return saved;
-  };
+    themeColor: string | null;
+  }) =>
+    withToken(async (token) => {
+      const saved = hasProfile(profile)
+        ? await updateProfile(token, form)
+        : await createProfile(token, form);
+      setProfile(saved);
+      return saved;
+    });
 
-  // ── Services ──
-  const createOrUpdateService = async (
+  const createOrUpdateService = (
     id: string | null,
     data: { title: string; description?: string; price?: number; currency: string }
-  ) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    if (id) {
-      const updated = await updateService(token, id, data);
-      setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
-      return updated;
-    }
-    const created = await addService(token, data);
-    setServices((prev) => [...prev, created]);
-    return created;
+  ) =>
+    withToken(async (token) => {
+      if (id) {
+        const updated = await updateService(token, id, data);
+        setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
+        return updated;
+      }
+      const created = await addService(token, data);
+      setServices((prev) => [...prev, created]);
+      return created;
+    });
+
+  const removeService = (id: string) =>
+    withToken(async (token) => {
+      await deleteService(token, id);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+    });
+
+  const reorderServicesLocal = (ids: string[]) => {
+    const prev = services;
+    const byId = new Map(prev.map((s) => [s.id, s]));
+    const next = ids.map((id) => byId.get(id)).filter((s): s is ServiceResponse => !!s);
+    setServices(next);
+    return withToken((token) => reorderServices(token, ids))
+      .then((saved) => setServices(saved))
+      .catch((err) => {
+        setServices(prev);
+        throw err;
+      });
   };
 
-  const removeService = async (id: string) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    await deleteService(token, id);
-    setServices((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  // ── Links ──
-  const createOrUpdateLink = async (
+  const createOrUpdateLink = (
     id: string | null,
     data: { label: string; url: string; iconName: string }
-  ) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    if (id) {
-      const updated = await updateLink(token, id, data);
-      setLinks((prev) => prev.map((l) => (l.id === id ? updated : l)));
-      return updated;
-    }
-    const created = await addLink(token, data);
-    setLinks((prev) => [...prev, created]);
-    return created;
+  ) =>
+    withToken(async (token) => {
+      if (id) {
+        const updated = await updateLink(token, id, data);
+        setLinks((prev) => prev.map((l) => (l.id === id ? updated : l)));
+        return updated;
+      }
+      const created = await addLink(token, data);
+      setLinks((prev) => [...prev, created]);
+      return created;
+    });
+
+  const removeLink = (id: string) =>
+    withToken(async (token) => {
+      await deleteLink(token, id);
+      setLinks((prev) => prev.filter((l) => l.id !== id));
+    });
+
+  const reorderLinksLocal = (ids: string[]) => {
+    const prev = links;
+    const byId = new Map(prev.map((l) => [l.id, l]));
+    const next = ids.map((id) => byId.get(id)).filter((l): l is LinkResponse => !!l);
+    setLinks(next);
+    return withToken((token) => reorderLinks(token, ids))
+      .then((saved) => setLinks(saved))
+      .catch((err) => {
+        setLinks(prev);
+        throw err;
+      });
   };
 
-  const removeLink = async (id: string) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    await deleteLink(token, id);
-    setLinks((prev) => prev.filter((l) => l.id !== id));
-  };
+  const saveAvailability = (slots: AvailabilitySlot[]) =>
+    withToken(async (token) => {
+      const saved = await saveMyAvailability(token, slots);
+      setAvailability(saved);
+      return saved;
+    });
 
-  // ── Availability ──
-  const saveAvailability = async (slots: AvailabilitySlot[]) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const saved = await saveMyAvailability(token, slots);
-    setAvailability(saved);
-    return saved;
-  };
+  const confirm = (id: string) =>
+    withToken(async (token) => {
+      const updated = await confirmBooking(token, id);
+      setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+    });
 
-  // ── Bookings ──
-  const confirm = async (id: string) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const updated = await confirmBooking(token, id);
-    setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
-  };
-  const cancel = async (id: string) => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const updated = await cancelBooking(token, id);
-    setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
-  };
+  const cancel = (id: string) =>
+    withToken(async (token) => {
+      const updated = await cancelBooking(token, id);
+      setBookings((prev) => prev.map((b) => (b.id === id ? updated : b)));
+    });
 
-  // ── Plan ──
-  const upgrade = async () => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const { url } = await createCheckoutSession(token);
-    window.location.href = url;
-  };
-  const managePortal = async () => {
-    const token = await getToken();
-    if (!token) throw new Error("No token");
-    const { url } = await getCustomerPortalUrl(token);
-    window.location.href = url;
-  };
+  const upgrade = () =>
+    withToken(async (token) => {
+      const { url } = await createCheckoutSession(token);
+      window.location.href = url;
+    });
+
+  const managePortal = () =>
+    withToken(async (token) => {
+      const { url } = await getCustomerPortalUrl(token);
+      window.location.href = url;
+    });
+
+  const testEmail = () => withToken((token) => sendTestEmail(token));
 
   return {
-    // state
     profile,
     services,
     links,
@@ -212,21 +235,21 @@ export function useDashboard() {
     availability,
     bookings,
     loading,
-    toast,
     plan,
     isPro,
     setAvailability,
-    setToast,
-    // actions
     saveProfile,
     createOrUpdateService,
     removeService,
+    reorderServices: reorderServicesLocal,
     createOrUpdateLink,
     removeLink,
+    reorderLinks: reorderLinksLocal,
     saveAvailability,
     confirm,
     cancel,
     upgrade,
     managePortal,
+    testEmail,
   };
 }

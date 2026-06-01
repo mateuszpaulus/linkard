@@ -8,6 +8,7 @@ import { Footer } from "@/components/ui/Footer";
 import { ProfileCard } from "@/components/profile/ProfileCard";
 import { Spinner } from "@/components/ui/Spinner";
 import { SkeletonCard } from "@/components/ui/SkeletonCard";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 import { useTranslation } from "@/lib/i18n";
 
 export default function ExplorePage() {
@@ -73,16 +74,16 @@ export default function ExplorePage() {
       <Header />
 
       <main id="main-content" className="mx-auto w-full max-w-6xl flex-1 px-4 py-12 lg:px-8">
-        <div className="mb-10 animate-fade-in-up text-center">
+        <FadeInUp className="mb-10 text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
             🌐 {t("explore.subtitle")}
           </span>
           <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-[#111827] dark:text-white md:text-5xl">
             {t("explore.title")}
           </h1>
-        </div>
+        </FadeInUp>
 
-        <div className="mx-auto mb-10 max-w-md animate-fade-in-up animate-fade-in-up-delay-1">
+        <FadeInUp delay={0.1} className="mx-auto mb-10 max-w-md">
           <div className="relative">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
               🔍
@@ -104,7 +105,7 @@ export default function ExplorePage() {
               </button>
             )}
           </div>
-        </div>
+        </FadeInUp>
 
         {loading ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -117,7 +118,7 @@ export default function ExplorePage() {
             <div className="mb-4 text-5xl">🔍</div>
             <p className="text-lg font-semibold text-[#111827] dark:text-white">
               {search
-                ? t("explore.noResultsFor") ?? `No profiles found for "${search}"`
+                ? t("explore.noResultsFor", { search })
                 : t("explore.empty")}
             </p>
             {search && (
@@ -125,7 +126,7 @@ export default function ExplorePage() {
                 onClick={() => setSearchInput("")}
                 className="mt-4 inline-flex h-10 items-center rounded-xl bg-[#3B82F6] px-5 text-sm font-medium text-white hover:bg-[#2563EB]"
               >
-                {t("common.clear") ?? "Clear"}
+                {t("common.clear")}
               </button>
             )}
           </div>

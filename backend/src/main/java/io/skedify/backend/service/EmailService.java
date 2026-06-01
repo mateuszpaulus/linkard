@@ -30,6 +30,10 @@ public class EmailService {
         this.restTemplate = restTemplate;
     }
 
+    public boolean isConfigured() {
+        return resendApiKey != null && !resendApiKey.isBlank();
+    }
+
     public void sendEmail(String to, String subject, String htmlBody) {
         if (resendApiKey == null || resendApiKey.isBlank()) {
             log.warn("Resend API key not configured — skipping email to {}", to);
@@ -60,10 +64,10 @@ public class EmailService {
                 ownerEmail,
                 "New message from " + clientName,
                 "<h2>Someone wrote through your Skedify profile!</h2>" +
-                "<p><b>To:</b> " + ownerDisplayName + "</p>" +
-                "<p><b>From:</b> " + clientName + " (<a href='mailto:" + clientEmail + "'>" + clientEmail + "</a>)</p>" +
+                "<p><b>To:</b> " + escape(ownerDisplayName) + "</p>" +
+                "<p><b>From:</b> " + escape(clientName) + " (<a href='mailto:" + escapeAttr(clientEmail) + "'>" + escape(clientEmail) + "</a>)</p>" +
                 "<p><b>Message:</b></p>" +
-                "<blockquote style='border-left:4px solid #3B82F6;padding-left:12px;color:#374151'>" + message + "</blockquote>" +
+                "<blockquote style='border-left:4px solid #3B82F6;padding-left:12px;color:#374151'>" + escape(message) + "</blockquote>" +
                 "<p><a href='https://skedify-io.vercel.app/dashboard'>Go to Dashboard →</a></p>"
         );
     }
@@ -72,16 +76,19 @@ public class EmailService {
         String ownerEmail = profile.getUser().getEmail();
         if (ownerEmail == null || ownerEmail.isBlank()) return;
 
+        String clientMessage = booking.getClientMessage();
+        String messageBlock = (clientMessage != null && !clientMessage.isBlank())
+                ? "<p><b>Message:</b> " + escape(clientMessage) + "</p>"
+                : "";
+
         sendEmail(
                 ownerEmail,
                 "New booking from " + booking.getClientName(),
                 "<h2>You have a new booking!</h2>" +
-                "<p><b>Client:</b> " + booking.getClientName() +
-                " (<a href='mailto:" + booking.getClientEmail() + "'>" + booking.getClientEmail() + "</a>)</p>" +
+                "<p><b>Client:</b> " + escape(booking.getClientName()) +
+                " (<a href='mailto:" + escapeAttr(booking.getClientEmail()) + "'>" + escape(booking.getClientEmail()) + "</a>)</p>" +
                 "<p><b>Date:</b> " + booking.getDate() + " · " + booking.getStartTime() + " – " + booking.getEndTime() + "</p>" +
-                (booking.getClientMessage() != null && !booking.getClientMessage().isBlank()
-                        ? "<p><b>Message:</b> " + booking.getClientMessage() + "</p>"
-                        : "") +
+                messageBlock +
                 "<p><a href='https://skedify-io.vercel.app/dashboard'>Manage booking →</a></p>"
         );
     }
@@ -92,7 +99,7 @@ public class EmailService {
                 booking.getClientEmail(),
                 "Meeting confirmed! ✓",
                 "<h2>Your meeting has been confirmed!</h2>" +
-                "<p><b>With:</b> " + ownerName + "</p>" +
+                "<p><b>With:</b> " + escape(ownerName) + "</p>" +
                 "<p><b>Date:</b> " + booking.getDate() + " · " + booking.getStartTime() + " – " + booking.getEndTime() + "</p>" +
                 "<p>See you then!</p>"
         );
@@ -106,5 +113,26 @@ public class EmailService {
                 "<p>Please update your payment method to keep Pro access.</p>" +
                 "<p><a href='https://skedify-io.vercel.app/pricing'>Manage subscription →</a></p>"
         );
+    }
+
+    private static String escape(String input) {
+        if (input == null) return "";
+        StringBuilder sb = new StringBuilder(input.length());
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            switch (c) {
+                case '&' -> sb.append("&amp;");
+                case '<' -> sb.append("&lt;");
+                case '>' -> sb.append("&gt;");
+                case '"' -> sb.append("&quot;");
+                case '\'' -> sb.append("&#39;");
+                default -> sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String escapeAttr(String input) {
+        return escape(input);
     }
 }

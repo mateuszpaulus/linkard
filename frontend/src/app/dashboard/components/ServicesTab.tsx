@@ -2,25 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
+import { useDashboardCtx } from "../DashboardContext";
 import type { ServiceResponse } from "@/types";
-
-interface Props {
-  services: ServiceResponse[];
-  isPro: boolean;
-  onCreateOrUpdate: (
-    id: string | null,
-    data: { title: string; description?: string; price?: number; currency: string }
-  ) => Promise<ServiceResponse>;
-  onRemove: (id: string) => Promise<void>;
-  onToast: (msg: { message: string; type: "success" | "error" }) => void;
-}
 
 const CURRENCIES = ["USD", "EUR", "PLN", "GBP"];
 
-export function ServicesTab({ services, isPro, onCreateOrUpdate, onRemove, onToast }: Props) {
+export function ServicesTab() {
   const { t } = useTranslation();
+  const {
+    services,
+    isPro,
+    createOrUpdateService: onCreateOrUpdate,
+    removeService: onRemove,
+    reorderServices: onReorder,
+  } = useDashboardCtx();
+  const { push: onToast } = useToast();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<ServiceResponse | null>(null);
   const [form, setForm] = useState({ title: "", description: "", price: "", currency: "USD" });
@@ -88,6 +89,18 @@ export function ServicesTab({ services, isPro, onCreateOrUpdate, onRemove, onToa
     }
   }
 
+  async function move(idx: number, delta: -1 | 1) {
+    const target = idx + delta;
+    if (target < 0 || target >= services.length) return;
+    const ids = services.map((s) => s.id);
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    try {
+      await onReorder(ids);
+    } catch {
+      onToast({ message: t("dashboard.services.saveError"), type: "error" });
+    }
+  }
+
   const inputClass =
     "h-11 w-full rounded-xl border border-gray-300 bg-white px-4 text-sm outline-none transition-shadow focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent dark:border-zinc-700 dark:bg-zinc-800 dark:text-white";
 
@@ -103,10 +116,11 @@ export function ServicesTab({ services, isPro, onCreateOrUpdate, onRemove, onToa
         <button
           onClick={openAdd}
           disabled={!canAdd}
-          className="inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2563EB] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2563EB] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           title={!canAdd ? t("dashboard.services.upgradeHint") : undefined}
         >
-          + {t("dashboard.services.addBtn")}
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
+          {t("dashboard.services.addBtn")}
         </button>
       </div>
 
@@ -120,36 +134,47 @@ export function ServicesTab({ services, isPro, onCreateOrUpdate, onRemove, onToa
       )}
 
       {services.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center dark:border-zinc-700">
-          <div className="mx-auto mb-4 text-6xl">🛠️</div>
-          <p className="text-lg font-semibold text-[#111827] dark:text-white">
-            No services yet
-          </p>
-          <p className="mt-2 text-sm text-[#6B7280] dark:text-zinc-400">
-            Add your first service to start earning
-          </p>
-          <button
-            onClick={openAdd}
-            className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-6 text-sm font-semibold text-white hover:bg-[#2563EB]"
-          >
-            + {t("dashboard.services.addBtn")}
-          </button>
-        </div>
+        <EmptyState
+          icon="🛠️"
+          title="No services yet"
+          description="Add your first service to start earning"
+          action={
+            <button
+              onClick={openAdd}
+              className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#3B82F6] px-6 text-sm font-semibold text-white hover:bg-[#2563EB]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              {t("dashboard.services.addBtn")}
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-3">
-          {services.map((s) => (
+          {services.map((s, idx) => (
             <div
               key={s.id}
               className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="flex items-start gap-3">
-                <div
-                  className="mt-1 text-gray-300 dark:text-zinc-600"
-                  title="Drag to reorder (coming soon)"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M7 2a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0zM7 18a2 2 0 11-4 0 2 2 0 014 0zM17 2a2 2 0 11-4 0 2 2 0 014 0zM17 10a2 2 0 11-4 0 2 2 0 014 0zM17 18a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                <div className="mt-0.5 flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    aria-label="Move up"
+                    disabled={idx === 0}
+                    onClick={() => move(idx, -1)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] transition-colors hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  >
+                    <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move down"
+                    disabled={idx === services.length - 1}
+                    onClick={() => move(idx, 1)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] transition-colors hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  >
+                    <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-[#111827] dark:text-white">{s.title}</p>

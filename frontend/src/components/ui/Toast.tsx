@@ -34,7 +34,7 @@ export function Toast({ message, type = "success", onClose, duration = 4000 }: T
     <div
       role="status"
       aria-live="polite"
-      className={`fixed bottom-6 right-6 z-50 overflow-hidden rounded-xl shadow-xl transition-all duration-300 ${
+      className={`pointer-events-auto overflow-hidden rounded-xl shadow-xl transition-all duration-300 ${
         style.bg
       } ${visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"}`}
     >

@@ -1,0 +1,87 @@
+### Variables
+@baseUrl = http://localhost:8080
+@username = anna-kowalska
+@token = paste-clerk-jwt-here
+
+
+### ==========================================
+### PUBLIC BOOKING (no auth)
+### ==========================================
+
+### Public availability for a profile
+GET {{baseUrl}}/api/p/{{username}}/availability
+Accept: application/json
+
+### Booked slots for a date (so frontend hides taken times)
+GET {{baseUrl}}/api/p/{{username}}/booked-slots?date=2026-06-10
+Accept: application/json
+
+### Create a booking (records BOOK event)
+POST {{baseUrl}}/api/p/{{username}}/book
+Content-Type: application/json
+
+{
+  "clientName": "Test Client",
+  "clientEmail": "client@example.com",
+  "clientMessage": "Looking forward to the meeting!",
+  "date": "2026-06-10",
+  "startTime": "10:00",
+  "endTime": "10:30"
+}
+
+
+### ==========================================
+### MY AVAILABILITY (Pro only)
+### ==========================================
+
+### Get my availability schedule
+GET {{baseUrl}}/api/me/availability
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Save availability (replaces all slots)
+PUT {{baseUrl}}/api/me/availability
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+[
+  { "dayOfWeek": 0, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 1, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 2, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 3, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 4, "startTime": "09:00", "endTime": "17:00", "isActive": true },
+  { "dayOfWeek": 5, "startTime": "09:00", "endTime": "17:00", "isActive": false },
+  { "dayOfWeek": 6, "startTime": "09:00", "endTime": "17:00", "isActive": false }
+]
+
+
+### ==========================================
+### MY BOOKINGS
+### ==========================================
+
+### List bookings
+GET {{baseUrl}}/api/me/bookings
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Confirm a booking (replace UUID)
+PATCH {{baseUrl}}/api/me/bookings/00000000-0000-0000-0000-000000000000/confirm
+Authorization: Bearer {{token}}
+
+### Cancel/decline a booking (replace UUID)
+PATCH {{baseUrl}}/api/me/bookings/00000000-0000-0000-0000-000000000000/cancel
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### SUBSCRIPTION
+### ==========================================
+
+### Get subscription info
+GET {{baseUrl}}/api/me/subscription
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Create Stripe checkout session (requires STRIPE_SECRET_KEY locally — returns 503 if missing)
+POST {{baseUrl}}/api/me/create-checkout-session
+Authorization: Bearer {{token}}

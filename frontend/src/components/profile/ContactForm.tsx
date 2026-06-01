@@ -37,7 +37,7 @@ export function ContactForm({ username }: Props) {
 
   if (sent) {
     return (
-      <div className="animate-scale-in rounded-2xl bg-gray-50 p-8 text-center dark:bg-zinc-800/50">
+      <div className="animate-scale-in py-6 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#10B981]/10 text-2xl text-[#10B981]">
           ✓
         </div>
@@ -45,7 +45,7 @@ export function ContactForm({ username }: Props) {
         <p className="mt-2 text-sm text-[#6B7280] dark:text-zinc-400">{t("contact.replyHint")}</p>
         <button
           onClick={() => setSent(false)}
-          className="mt-4 text-sm font-medium text-[#3B82F6] hover:text-[#2563EB]"
+          className="mt-4 text-sm font-medium text-[var(--accent)] hover:text-[#2563EB]"
         >
           {t("contact.successBtn")}
         </button>
@@ -54,17 +54,10 @@ export function ContactForm({ username }: Props) {
   }
 
   const inputClass =
-    "w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-[#111827] outline-none transition-shadow focus:ring-2 focus:ring-[#3B82F6] focus:border-transparent placeholder:text-gray-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white";
+    "w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-[#111827] outline-none transition-shadow focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent placeholder:text-gray-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white";
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-2xl bg-gray-50 p-6 dark:bg-zinc-800/50"
-    >
-      <h2 className="mb-5 text-lg font-semibold text-[#111827] dark:text-white">
-        {t("contact.writeToMe")} 💬
-      </h2>
-
+    <form onSubmit={handleSubmit}>
       {error && (
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-[#EF4444]/10 px-4 py-2.5 text-sm text-[#EF4444]">
           <span>⚠️</span> {error}
@@ -115,7 +108,7 @@ export function ContactForm({ username }: Props) {
         <button
           type="submit"
           disabled={sending}
-          className="flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[var(--accent)] to-[#7C3AED] text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
         >
           {sending ? <Spinner className="h-5 w-5 text-white" /> : t("contact.send")}
         </button>

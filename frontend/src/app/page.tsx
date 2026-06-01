@@ -4,29 +4,12 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
+import { FadeInUp } from "@/components/ui/FadeInUp";
+import { useTranslation } from "@/lib/i18n";
 
-const STEPS = [
-  { icon: "👤", title: "Sign up", desc: "Create an account in 30 seconds via email or Google" },
-  { icon: "✏️", title: "Fill your profile", desc: "Add bio, services, prices and social links" },
-  { icon: "🔗", title: "Share your link", desc: "One link for everything: skedify.io/yourname" },
-];
-
-const AUDIENCES = [
-  { icon: "💻", title: "Developers & IT", desc: "Showcase your portfolio, tech stack and services to potential clients" },
-  { icon: "🎨", title: "Creatives", desc: "Designers, photographers, videographers — your portfolio always at hand" },
-  { icon: "🎯", title: "Consultants & coaches", desc: "One link for your offer, booking and client contact" },
-];
-
-const FEATURES_LIST = [
-  { text: "Public profile with custom URL", pro: false },
-  { text: "Service list with prices", pro: false },
-  { text: "Social links", pro: false },
-  { text: "Contact form", pro: false },
-  { text: "Meeting booking system", pro: true },
-  { text: "Custom domain", pro: true },
-  { text: "View analytics", pro: true },
-  { text: "Unlimited services", pro: true },
-];
+const STEP_ICONS = ["👤", "✏️", "🔗"];
+const AUDIENCE_ICONS = ["💻", "🎨", "🎯"];
+const FEATURE_PRO = [false, false, false, false, true, true, true, true];
 
 const MOCK_SERVICES = [
   { title: "1h Consultation", price: "$150" },
@@ -46,6 +29,7 @@ const JSON_LD = {
 
 export default function Home() {
   const { isSignedIn } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0b0b0f]">
@@ -60,19 +44,19 @@ export default function Home() {
         {/* Decorative blobs */}
         <div className="pointer-events-none absolute left-1/2 top-0 -z-0 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-gradient-to-br from-blue-200/40 to-violet-200/30 blur-3xl dark:from-blue-500/10 dark:to-violet-500/10" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
-          <div className="animate-fade-in-up">
+          <FadeInUp>
             <span className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-blue-200/50 dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800/50">
-              ✨ Link-in-bio for professionals
+              ✨ {t("home.badge")}
             </span>
             <h1 className="mt-6 text-5xl font-extrabold leading-[1.05] tracking-tight text-[#111827] dark:text-white md:text-7xl">
-              Your{" "}
+              {t("home.heroLine.before")}
               <span className="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent">
-                professional
-              </span>{" "}
-              profile in 5 minutes
+                {t("home.heroLine.emphasis")}
+              </span>
+              {t("home.heroLine.after")}
             </h1>
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-[#6B7280] dark:text-zinc-400">
-              One page. All your services. One link to share with the world.
+              {t("home.heroSub")}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               {isSignedIn ? (
@@ -80,7 +64,7 @@ export default function Home() {
                   href="/dashboard"
                   className="group inline-flex h-12 items-center justify-center rounded-xl bg-[#3B82F6] px-7 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[#2563EB] hover:shadow-xl hover:shadow-blue-500/30"
                 >
-                  Go to dashboard
+                  {t("home.ctaDashboard")}
                   <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
                 </Link>
               ) : (
@@ -89,14 +73,14 @@ export default function Home() {
                     href="/sign-up"
                     className="group inline-flex h-12 items-center justify-center rounded-xl bg-[#3B82F6] px-7 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[#2563EB] hover:shadow-xl hover:shadow-blue-500/30"
                   >
-                    Create free profile
+                    {t("home.ctaFree")}
                     <span className="ml-2 transition-transform group-hover:translate-x-1">→</span>
                   </Link>
                   <Link
                     href="/explore"
                     className="inline-flex h-12 items-center justify-center rounded-xl border border-gray-300 bg-white/50 px-7 text-sm font-semibold text-[#111827] backdrop-blur transition-all hover:bg-white hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900/50 dark:text-zinc-200 dark:hover:bg-zinc-900"
                   >
-                    See examples <span className="ml-2">↗</span>
+                    {t("home.ctaSecondary")} <span className="ml-2">↗</span>
                   </Link>
                 </>
               )}
@@ -115,12 +99,12 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <span>Join 1000+ professionals</span>
+              <span>{t("home.joinCount")}</span>
             </div>
-          </div>
+          </FadeInUp>
 
           {/* Mockup */}
-          <div className="flex justify-center animate-fade-in-up animate-fade-in-up-delay-2">
+          <FadeInUp delay={0.2} className="flex justify-center">
             <div className="relative">
               <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 blur-2xl" />
               <div className="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900">
@@ -135,7 +119,7 @@ export default function Home() {
                 <h3 className="text-center text-xl font-bold text-[#111827] dark:text-white">John Doe</h3>
                 <p className="mt-1 text-center text-sm text-[#6B7280] dark:text-zinc-400">@johndoe</p>
                 <p className="mt-3 text-center text-sm text-[#6B7280] dark:text-zinc-400">
-                  Full-stack developer helping startups build great products.
+                  {t("home.mockBio")}
                 </p>
                 <div className="mt-6 space-y-2">
                   {MOCK_SERVICES.map((s) => (
@@ -160,12 +144,12 @@ export default function Home() {
                 </div>
                 <div className="mt-5 flex justify-center">
                   <span className="inline-flex h-10 items-center rounded-xl bg-gradient-to-r from-[#3B82F6] to-[#7C3AED] px-6 text-sm font-medium text-white shadow-md">
-                    Get in touch
+                    {t("home.mockContact")}
                   </span>
                 </div>
               </div>
             </div>
-          </div>
+          </FadeInUp>
         </div>
       </section>
 
@@ -174,23 +158,27 @@ export default function Home() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-16 text-center">
             <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-              How it works
+              {t("home.eyebrows.how")}
             </span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#111827] dark:text-white md:text-4xl">
-              As simple as 1-2-3
+              {t("home.howTitle")}
             </h2>
           </div>
           <div className="relative grid gap-12 md:grid-cols-3 md:gap-6">
             {/* connector line */}
             <div className="absolute left-0 right-0 top-6 hidden h-0.5 bg-gradient-to-r from-transparent via-blue-200 to-transparent dark:via-blue-800 md:block" />
-            {STEPS.map((step, i) => (
-              <div key={step.title} className="relative text-center">
+            {STEP_ICONS.map((icon, i) => (
+              <div key={i} className="relative text-center">
                 <div className="relative mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#3B82F6] to-[#2563EB] text-lg font-bold text-white shadow-lg shadow-blue-500/30">
                   {i + 1}
                 </div>
-                <div className="mb-3 text-4xl">{step.icon}</div>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827] dark:text-white">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-[#6B7280] dark:text-zinc-400">{step.desc}</p>
+                <div className="mb-3 text-4xl">{icon}</div>
+                <h3 className="mb-2 text-lg font-semibold text-[#111827] dark:text-white">
+                  {t(`home.steps.${i}.title`)}
+                </h3>
+                <p className="text-sm leading-relaxed text-[#6B7280] dark:text-zinc-400">
+                  {t(`home.steps.${i}.desc`)}
+                </p>
               </div>
             ))}
           </div>
@@ -202,23 +190,27 @@ export default function Home() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-16 text-center">
             <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-              Who it&apos;s for
+              {t("home.eyebrows.forWho")}
             </span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#111827] dark:text-white md:text-4xl">
-              Built for professionals
+              {t("home.forWhoTitle")}
             </h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
-            {AUDIENCES.map((a) => (
+            {AUDIENCE_ICONS.map((icon, i) => (
               <div
-                key={a.title}
+                key={i}
                 className="group rounded-2xl border border-gray-200 border-l-4 border-l-blue-500 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg dark:border-zinc-800 dark:border-l-blue-500 dark:bg-zinc-900"
               >
                 <div className="mb-4 inline-flex rounded-xl bg-blue-100 p-3 text-3xl transition-transform group-hover:scale-110 dark:bg-blue-900/30">
-                  {a.icon}
+                  {icon}
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-[#111827] dark:text-white">{a.title}</h3>
-                <p className="text-sm leading-relaxed text-[#6B7280] dark:text-zinc-400">{a.desc}</p>
+                <h3 className="mb-2 text-lg font-semibold text-[#111827] dark:text-white">
+                  {t(`home.audiences.${i}.title`)}
+                </h3>
+                <p className="text-sm leading-relaxed text-[#6B7280] dark:text-zinc-400">
+                  {t(`home.audiences.${i}.desc`)}
+                </p>
               </div>
             ))}
           </div>
@@ -230,25 +222,27 @@ export default function Home() {
         <div className="mx-auto max-w-5xl">
           <div className="mb-16 text-center">
             <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-              Features
+              {t("home.eyebrows.features")}
             </span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#111827] dark:text-white md:text-4xl">
-              Everything you need
+              {t("home.featuresTitle")}
             </h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            {FEATURES_LIST.map((f) => (
+            {FEATURE_PRO.map((isPro, i) => (
               <div
-                key={f.text}
+                key={i}
                 className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-600 dark:bg-green-900/30 dark:text-green-400">
                   ✓
                 </span>
-                <span className="text-sm text-[#111827] dark:text-zinc-200">{f.text}</span>
-                {f.pro && (
+                <span className="text-sm text-[#111827] dark:text-zinc-200">
+                  {t(`home.features.${i}`)}
+                </span>
+                {isPro && (
                   <span className="ml-auto rounded-full bg-gradient-to-r from-blue-500 to-violet-500 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
-                    Pro
+                    {t("home.proBadge")}
                   </span>
                 )}
               </div>
@@ -262,16 +256,16 @@ export default function Home() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,rgba(255,255,255,0.15),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.1),transparent_50%)]" />
         <div className="relative mx-auto max-w-2xl text-center">
           <h2 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl">
-            Ready to get started?
+            {t("home.readyTitle")}
           </h2>
           <p className="mt-4 text-lg text-blue-100">
-            Join for free. Upgrade when you&apos;re ready.
+            {t("home.readySub")}
           </p>
           <Link
             href={isSignedIn ? "/dashboard" : "/sign-up"}
             className="mt-8 inline-flex h-12 items-center rounded-xl bg-white px-8 text-sm font-semibold text-[#3B82F6] shadow-xl transition-all hover:scale-105 hover:shadow-2xl"
           >
-            {isSignedIn ? "Go to dashboard" : "Create free profile"} →
+            {isSignedIn ? t("home.ctaDashboard") : t("home.ctaFree")} →
           </Link>
         </div>
       </section>

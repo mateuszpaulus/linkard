@@ -3,11 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getPublicProfile } from "@/lib/api";
 import type { ProfileResponse } from "@/types";
-import { ContactForm } from "@/components/profile/ContactForm";
 import { ServiceCard } from "@/components/profile/ServiceCard";
 import { LinkButton } from "@/components/profile/LinkButton";
 import { Avatar } from "@/components/ui/Avatar";
-import BookingWidget from "@/components/BookingWidget";
+import { GetInTouch } from "@/components/profile/GetInTouch";
+import { ShareButton } from "@/components/profile/ShareButton";
+import { FadeInUp } from "@/components/ui/FadeInUp";
+import { getServerT } from "@/lib/i18n-server";
 
 interface Props {
   params: Promise<{ username: string }>;
@@ -15,26 +17,25 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
+  const { t } = await getServerT();
   try {
     const profile = await getPublicProfile(username);
     const title = profile.displayName
       ? `${profile.displayName} (@${profile.username})`
       : `@${profile.username}`;
+    const fallbackDesc = t("profile.openGraph.description", { username });
     return {
       title: `${title} — Skedify`,
-      description: profile.bio ?? `${username}'s profile on Skedify`,
+      description: profile.bio ?? fallbackDesc,
       openGraph: {
-        title: `${profile.displayName ?? username} — Skedify`,
-        description: profile.bio ?? `${username}'s professional profile on Skedify`,
+        title: t("profile.openGraph.title", { name: profile.displayName ?? username }),
+        description: profile.bio ?? fallbackDesc,
         type: "profile",
         url: `https://skedify.io/${username}`,
-        ...(profile.avatarUrl && {
-          images: [{ url: profile.avatarUrl, width: 400, height: 400, alt: title }],
-        }),
       },
     };
   } catch {
-    return { title: "Profile not found — Skedify" };
+    return { title: `${t("notFound.title")} — Skedify` };
   }
 }
 
@@ -52,6 +53,7 @@ function Divider({ label }: { label: string }) {
 
 export default async function PublicProfilePage({ params }: Props) {
   const { username } = await params;
+  const { t } = await getServerT();
 
   let profile: ProfileResponse;
   try {
@@ -61,10 +63,13 @@ export default async function PublicProfilePage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white px-4 py-10 dark:from-blue-950/20 dark:via-[#0b0b0f] dark:to-[#0b0b0f] sm:py-16">
+    <div
+      className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white px-4 py-10 dark:from-blue-950/20 dark:via-[#0b0b0f] dark:to-[#0b0b0f] sm:py-16"
+      style={{ ["--accent" as string]: profile.themeColor ?? "#3B82F6" }}
+    >
       <div className="mx-auto w-full max-w-xl space-y-8">
         {/* ── Hero ── */}
-        <div className="animate-fade-in-up text-center">
+        <FadeInUp className="text-center">
           <div className="mb-5 flex justify-center">
             <div className="relative">
               <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 opacity-40 blur-md" />
@@ -99,53 +104,51 @@ export default async function PublicProfilePage({ params }: Props) {
                   href={profile.websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[#3B82F6] hover:underline"
+                  className="flex items-center gap-1 text-[var(--accent)] hover:underline"
                 >
                   🌐 {profile.websiteUrl.replace(/^https?:\/\//, "")}
                 </a>
               )}
             </div>
           )}
-        </div>
+          <div className="mt-5 flex justify-center">
+            <ShareButton username={profile.username} displayName={profile.displayName} />
+          </div>
+        </FadeInUp>
 
         {/* ── Social links ── */}
         {profile.links.length > 0 && (
-          <section className="animate-fade-in-up animate-fade-in-up-delay-1 space-y-3">
+          <FadeInUp as="section" delay={0.1} className="space-y-3">
             {profile.links.map((l) => (
               <LinkButton key={l.id} link={l} />
             ))}
-          </section>
+          </FadeInUp>
         )}
 
         {/* ── Services ── */}
         {profile.services.length > 0 && (
-          <section className="animate-fade-in-up animate-fade-in-up-delay-2 space-y-4">
-            <Divider label="What I offer" />
+          <FadeInUp as="section" delay={0.2} className="space-y-4">
+            <Divider label={t("profile.whatIOffer")} />
             <div className="space-y-3">
               {profile.services.map((s) => (
                 <ServiceCard key={s.id} service={s} />
               ))}
             </div>
-          </section>
+          </FadeInUp>
         )}
 
-        {/* ── Booking ── */}
-        <div className="animate-fade-in-up animate-fade-in-up-delay-3">
-          <BookingWidget username={profile.username} displayName={profile.displayName} />
-        </div>
-
-        {/* ── Contact ── */}
-        <section className="animate-fade-in-up animate-fade-in-up-delay-3">
-          <ContactForm username={profile.username} />
-        </section>
+        {/* ── Get in touch ── */}
+        <FadeInUp as="section" delay={0.3}>
+          <GetInTouch username={profile.username} displayName={profile.displayName} />
+        </FadeInUp>
 
         {/* ── Footer ── */}
         <div className="pt-4 text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-[#3B82F6] dark:text-zinc-500"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 transition-colors hover:text-[var(--accent)] dark:text-zinc-500"
           >
-            Powered by <span className="font-semibold">Skedify</span> ↗
+            {t("profile.poweredBy")} <span className="font-semibold">Skedify</span> ↗
           </Link>
         </div>
       </div>

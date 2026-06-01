@@ -1,55 +1,73 @@
 package io.skedify.backend.service;
 
-import io.skedify.backend.dto.*;
-import io.skedify.backend.entity.*;
-import io.skedify.backend.repository.*;
+import io.skedify.backend.dto.PageResponse;
+import io.skedify.backend.dto.ProfileRequest;
+import io.skedify.backend.dto.ProfileResponse;
+import io.skedify.backend.dto.ProfileSummaryResponse;
+import io.skedify.backend.dto.StatsResponse;
+import io.skedify.backend.entity.Booking;
+import io.skedify.backend.entity.Link;
+import io.skedify.backend.entity.Offering;
+import io.skedify.backend.entity.Profile;
+import io.skedify.backend.entity.User;
+import io.skedify.backend.repository.BookingRepository;
+import io.skedify.backend.repository.ProfileRepository;
+import io.skedify.backend.repository.UserRepository;
+import io.skedify.backend.service.mapper.ProfileMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class ProfileService {
 
+    private static final int MAX_PAGE_SIZE = 24;
+
     private final ProfileRepository profileRepository;
     private final UserRepository userRepository;
-    private final ServiceRepository serviceRepository;
-    private final LinkRepository linkRepository;
     private final BookingRepository bookingRepository;
+    private final ProfileMapper mapper;
     private final EmailService emailService;
-
-    public ProfileService(ProfileRepository profileRepository, UserRepository userRepository,
-                          ServiceRepository serviceRepository, LinkRepository linkRepository,
-                          BookingRepository bookingRepository, EmailService emailService) {
-        this.profileRepository = profileRepository;
-        this.userRepository = userRepository;
-        this.serviceRepository = serviceRepository;
-        this.linkRepository = linkRepository;
-        this.bookingRepository = bookingRepository;
-        this.emailService = emailService;
-    }
+    private final ProfileEventService profileEventService;
+    private final io.skedify.backend.repository.ProfileEventRepository profileEventRepository;
 
     @Value("${app.base-url:https://skedify-io.vercel.app}")
     private String baseUrl;
+
+    public ProfileService(ProfileRepository profileRepository,
+                          UserRepository userRepository,
+                          BookingRepository bookingRepository,
+                          ProfileMapper mapper,
+                          EmailService emailService,
+                          ProfileEventService profileEventService,
+                          io.skedify.backend.repository.ProfileEventRepository profileEventRepository) {
+        this.profileRepository = profileRepository;
+        this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
+        this.mapper = mapper;
+        this.emailService = emailService;
+        this.profileEventService = profileEventService;
+        this.profileEventRepository = profileEventRepository;
+    }
 
     @Transactional
     public ProfileResponse getPublicProfile(String username) {
         Profile profile = profileRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
         profile.setViewCount((profile.getViewCount() == null ? 0L : profile.getViewCount()) + 1);
-        return toPublicResponse(profile);
+        profileEventService.record(profile, io.skedify.backend.entity.ProfileEvent.Type.VIEW);
+        return mapper.toResponse(profile, false);
     }
 
     @Transactional(readOnly = true)
     public ProfileResponse getMyProfile(String clerkId) {
         return profileRepository.findByUserClerkId(clerkId)
-                .map(this::toResponse)
+                .map(p -> mapper.toResponse(p, true))
                 .orElse(emptyProfileResponse());
     }
 
@@ -59,52 +77,32 @@ public class ProfileService {
                 clerkId, Booking.Status.PENDING);
 
         return profileRepository.findByUserClerkId(clerkId).map(profile -> {
-            long services = profile.getServices().stream().filter(io.skedify.backend.entity.Service::isActive).count();
+            long services = profile.getOfferings().stream()
+                    .filter(Offering::isActive).count();
             long links = profile.getLinks().stream().filter(Link::isActive).count();
+            long contactCount = profileEventRepository.countByProfileIdAndEventType(
+                    profile.getId(), io.skedify.backend.entity.ProfileEvent.Type.CONTACT);
+            long bookingCount = profileEventRepository.countByProfileIdAndEventType(
+                    profile.getId(), io.skedify.backend.entity.ProfileEvent.Type.BOOK);
             String profileUrl = baseUrl + "/" + profile.getUsername();
             return new StatsResponse(
                     profile.getViewCount() == null ? 0L : profile.getViewCount(),
                     (int) services,
                     (int) links,
                     profileUrl,
-                    pendingBookings
+                    pendingBookings,
+                    contactCount,
+                    bookingCount
             );
-        }).orElse(new StatsResponse(0L, 0, 0, null, 0L));
-    }
-
-    public List<ServiceResponse> getMyServices(String clerkId) {
-        return profileRepository.findByUserClerkId(clerkId)
-                .map(p -> serviceRepository.findByProfileIdOrderByDisplayOrderAsc(p.getId())
-                        .stream().map(this::toServiceResponse).toList())
-                .orElse(List.of());
-    }
-
-    public List<LinkResponse> getMyLinks(String clerkId) {
-        return profileRepository.findByUserClerkId(clerkId)
-                .map(p -> linkRepository.findByProfileIdOrderByDisplayOrderAsc(p.getId())
-                        .stream().map(this::toLinkResponse).toList())
-                .orElse(List.of());
+        }).orElse(new StatsResponse(0L, 0, 0, null, 0L, 0L, 0L));
     }
 
     @Transactional(readOnly = true)
     public PageResponse<ProfileSummaryResponse> getPublicProfiles(int page, int size, String search) {
-        int safeSize = Math.min(size, 24);
+        int safeSize = Math.min(size, MAX_PAGE_SIZE);
         String q = (search != null && !search.isBlank()) ? search.trim() : null;
         return PageResponse.from(profileRepository.searchProfiles(q, PageRequest.of(page, safeSize))
-                .map(this::toSummaryResponse));
-    }
-
-    private User ensureUserExists(String clerkId, String email) {
-        return userRepository.findByClerkId(clerkId).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setClerkId(clerkId);
-            newUser.setEmail(email != null ? email : clerkId + "@placeholder.local");
-            return userRepository.save(newUser);
-        });
-    }
-
-    private ProfileResponse emptyProfileResponse() {
-        return new ProfileResponse(null, null, null, null, null, null, null, List.of(), List.of(), "FREE");
+                .map(mapper::toSummaryResponse));
     }
 
     @Transactional
@@ -118,7 +116,8 @@ public class ProfileService {
         });
 
         if (request.username() != null) {
-            if (!request.username().equals(profile.getUsername()) && profileRepository.existsByUsername(request.username())) {
+            if (!request.username().equals(profile.getUsername())
+                    && profileRepository.existsByUsername(request.username())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken");
             }
             profile.setUsername(request.username());
@@ -128,189 +127,45 @@ public class ProfileService {
         if (request.avatarUrl() != null) profile.setAvatarUrl(request.avatarUrl());
         if (request.location() != null) profile.setLocation(request.location());
         if (request.websiteUrl() != null) profile.setWebsiteUrl(request.websiteUrl());
-
-        return toResponse(profileRepository.save(profile));
-    }
-
-    @Transactional
-    public ServiceResponse addService(String clerkId, ServiceRequest request) {
-        Profile profile = profileRepository.findByUserClerkId(clerkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-
-        boolean isPro = profile.getUser().getSubscriptionStatus() == User.SubscriptionStatus.PRO;
-        long activeServices = profile.getServices().stream()
-                .filter(io.skedify.backend.entity.Service::isActive).count();
-        if (!isPro && activeServices >= 3) {
-            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Free plan limit: 3 services. Upgrade to Pro.");
+        if (request.themeColor() != null) {
+            profile.setThemeColor(request.themeColor().isBlank() ? null : request.themeColor());
         }
 
-        io.skedify.backend.entity.Service service = new io.skedify.backend.entity.Service();
-        service.setProfile(profile);
-        service.setTitle(request.title());
-        service.setDescription(request.description());
-        service.setPrice(request.price());
-        if (request.currency() != null) service.setCurrency(request.currency());
-        service.setPriceLabel(request.priceLabel());
-        service.setDisplayOrder(profile.getServices().size());
-
-        return toServiceResponse(serviceRepository.save(service));
+        return mapper.toResponse(profileRepository.save(profile), true);
     }
 
-    @Transactional
-    public ServiceResponse updateService(String clerkId, UUID serviceId, ServiceRequest request) {
-        io.skedify.backend.entity.Service service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
-        if (!service.getProfile().getUser().getClerkId().equals(clerkId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        if (request.title() != null) service.setTitle(request.title());
-        if (request.description() != null) service.setDescription(request.description());
-        if (request.price() != null) service.setPrice(request.price());
-        if (request.currency() != null) service.setCurrency(request.currency());
-        if (request.priceLabel() != null) service.setPriceLabel(request.priceLabel());
-        return toServiceResponse(serviceRepository.save(service));
+    private User ensureUserExists(String clerkId, String email) {
+        return userRepository.findByClerkId(clerkId).orElseGet(() -> {
+            User newUser = new User();
+            newUser.setClerkId(clerkId);
+            newUser.setEmail(email != null ? email : clerkId + "@placeholder.local");
+            return userRepository.save(newUser);
+        });
     }
 
-    @Transactional
-    public void deleteService(String clerkId, UUID serviceId) {
-        io.skedify.backend.entity.Service service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service not found"));
-        if (!service.getProfile().getUser().getClerkId().equals(clerkId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        serviceRepository.delete(service);
+    private ProfileResponse emptyProfileResponse() {
+        return new ProfileResponse(null, null, null, null, null, null, null, null, List.of(), List.of(), "FREE");
     }
 
-    @Transactional
-    public LinkResponse addLink(String clerkId, LinkRequest request) {
-        Profile profile = profileRepository.findByUserClerkId(clerkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-
-        boolean isPro = profile.getUser().getSubscriptionStatus() == User.SubscriptionStatus.PRO;
-        long activeLinks = profile.getLinks().stream()
-                .filter(Link::isActive).count();
-        if (!isPro && activeLinks >= 3) {
-            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Free plan limit: 3 links. Upgrade to Pro.");
+    public void sendTestEmail(String clerkId) {
+        if (!emailService.isConfigured()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Email service not configured");
         }
-
-        Link link = new Link();
-        link.setProfile(profile);
-        link.setLabel(request.label());
-        link.setUrl(request.url());
-        link.setIconName(request.iconName());
-        link.setDisplayOrder(profile.getLinks().size());
-
-        return toLinkResponse(linkRepository.save(link));
-    }
-
-    @Transactional
-    public LinkResponse updateLink(String clerkId, UUID linkId, LinkRequest request) {
-        Link link = linkRepository.findById(linkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link not found"));
-        if (!link.getProfile().getUser().getClerkId().equals(clerkId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        User user = userRepository.findByClerkId(clerkId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No email on account");
         }
-        if (request.label() != null) link.setLabel(request.label());
-        if (request.url() != null) link.setUrl(request.url());
-        if (request.iconName() != null) link.setIconName(request.iconName());
-        return toLinkResponse(linkRepository.save(link));
-    }
-
-    @Transactional
-    public void deleteLink(String clerkId, UUID linkId) {
-        Link link = linkRepository.findById(linkId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link not found"));
-        if (!link.getProfile().getUser().getClerkId().equals(clerkId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        }
-        linkRepository.delete(link);
-    }
-
-    @Transactional(readOnly = true)
-    public void sendContact(String username, ContactRequest request) {
-        Profile profile = profileRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
-        String ownerEmail = profile.getUser().getEmail();
-        if (ownerEmail == null || ownerEmail.isBlank()) {
-            throw new ResponseStatusException(HttpStatusCode.valueOf(422), "Owner email not set");
-        }
-        emailService.sendContactEmail(
-                ownerEmail,
-                profile.getDisplayName() != null ? profile.getDisplayName() : profile.getUsername(),
-                request.name(),
-                request.email(),
-                request.message()
+        String name = profileRepository.findByUserClerkId(clerkId)
+                .map(p -> p.getDisplayName() != null ? p.getDisplayName() : p.getUsername())
+                .orElse("there");
+        emailService.sendEmail(
+                user.getEmail(),
+                "Skedify test email ✓",
+                "<h2>Hello, " + name + "!</h2>" +
+                "<p>This is a test email from Skedify to verify that delivery is working.</p>" +
+                "<p>If you received this, your Resend configuration is correct.</p>" +
+                "<p style='color:#9CA3AF;font-size:12px;margin-top:24px'>Sent at " + java.time.Instant.now() + "</p>"
         );
-    }
-
-    private ProfileResponse toResponse(Profile profile) {
-        List<ServiceResponse> services = profile.getServices().stream()
-                .filter(io.skedify.backend.entity.Service::isActive)
-                .map(this::toServiceResponse)
-                .toList();
-        List<LinkResponse> links = profile.getLinks().stream()
-                .filter(Link::isActive)
-                .map(this::toLinkResponse)
-                .toList();
-        String plan = profile.getUser() != null && profile.getUser().getSubscriptionStatus() != null
-                ? profile.getUser().getSubscriptionStatus().name()
-                : "FREE";
-        return new ProfileResponse(
-                profile.getId(),
-                profile.getUsername(),
-                profile.getDisplayName(),
-                profile.getBio(),
-                profile.getAvatarUrl(),
-                profile.getLocation(),
-                profile.getWebsiteUrl(),
-                services,
-                links,
-                plan
-        );
-    }
-
-    private ProfileResponse toPublicResponse(Profile profile) {
-        List<ServiceResponse> services = profile.getServices().stream()
-                .filter(io.skedify.backend.entity.Service::isActive)
-                .map(this::toServiceResponse)
-                .toList();
-        List<LinkResponse> links = profile.getLinks().stream()
-                .filter(Link::isActive)
-                .map(this::toLinkResponse)
-                .toList();
-        return new ProfileResponse(
-                profile.getId(),
-                profile.getUsername(),
-                profile.getDisplayName(),
-                profile.getBio(),
-                profile.getAvatarUrl(),
-                profile.getLocation(),
-                profile.getWebsiteUrl(),
-                services,
-                links,
-                null
-        );
-    }
-
-    private ProfileSummaryResponse toSummaryResponse(Profile profile) {
-        int servicesCount = (int) profile.getServices().stream()
-                .filter(io.skedify.backend.entity.Service::isActive).count();
-        return new ProfileSummaryResponse(
-                profile.getId(),
-                profile.getUsername(),
-                profile.getDisplayName(),
-                profile.getBio(),
-                profile.getAvatarUrl(),
-                servicesCount
-        );
-    }
-
-    private ServiceResponse toServiceResponse(io.skedify.backend.entity.Service s) {
-        return new ServiceResponse(s.getId(), s.getTitle(), s.getDescription(),
-                s.getPrice(), s.getCurrency(), s.getPriceLabel(), s.getDisplayOrder());
-    }
-
-    private LinkResponse toLinkResponse(Link l) {
-        return new LinkResponse(l.getId(), l.getLabel(), l.getUrl(), l.getIconName(), l.getDisplayOrder());
     }
 }

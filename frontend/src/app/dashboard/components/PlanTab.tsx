@@ -1,16 +1,61 @@
 "use client";
 
 import { useState } from "react";
+import { Mail } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { useTranslation } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
+import { useDashboardCtx } from "../DashboardContext";
 
-interface Props {
-  isPro: boolean;
-  servicesCount: number;
-  linksCount: number;
-  onUpgrade: () => Promise<void>;
-  onManage: () => Promise<void>;
-  onToast: (msg: { message: string; type: "success" | "error" }) => void;
+function EmailDiagnostics() {
+  const { t } = useTranslation();
+  const { testEmail: onTestEmail } = useDashboardCtx();
+  const { push: onToast } = useToast();
+  const [sending, setSending] = useState(false);
+
+  async function handleClick() {
+    setSending(true);
+    try {
+      await onTestEmail();
+      onToast({ message: t("dashboard.plan.testEmailSent"), type: "success" });
+    } catch {
+      onToast({ message: t("dashboard.plan.testEmailError"), type: "error" });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#3B82F6] dark:bg-blue-900/30 dark:text-blue-400">
+          <Mail className="h-5 w-5" strokeWidth={2} />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-sm font-semibold text-[#111827] dark:text-white">
+            {t("dashboard.plan.emailDiagTitle")}
+          </h3>
+          <p className="mt-1 text-sm text-[#6B7280] dark:text-zinc-400">
+            {t("dashboard.plan.emailDiagDesc")}
+          </p>
+          <button
+            onClick={handleClick}
+            disabled={sending}
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 text-sm font-medium text-[#111827] transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            {sending ? (
+              <>
+                <Spinner className="h-4 w-4 text-[#3B82F6]" />
+                {t("dashboard.plan.testEmailSending")}
+              </>
+            ) : (
+              t("dashboard.plan.testEmailBtn")
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ProgressBar({ value, max, label }: { value: number; max: number; label: string }) {
@@ -42,7 +87,17 @@ function ProgressBar({ value, max, label }: { value: number; max: number; label:
   );
 }
 
-export function PlanTab({ isPro, servicesCount, linksCount, onUpgrade, onManage, onToast }: Props) {
+export function PlanTab() {
+  const {
+    isPro,
+    services,
+    links,
+    upgrade: onUpgrade,
+    managePortal: onManage,
+  } = useDashboardCtx();
+  const { push: onToast } = useToast();
+  const servicesCount = services.length;
+  const linksCount = links.length;
   const { t } = useTranslation();
   const [upgrading, setUpgrading] = useState(false);
 
@@ -66,7 +121,7 @@ export function PlanTab({ isPro, servicesCount, linksCount, onUpgrade, onManage,
 
   if (isPro) {
     return (
-      <div className="animate-fade-in">
+      <div className="animate-fade-in space-y-6">
         <div className="rounded-2xl border-2 border-[#10B981]/40 bg-gradient-to-br from-green-50 to-white p-8 shadow-sm dark:border-[#10B981]/30 dark:from-green-950/20 dark:to-zinc-900">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981] text-2xl text-white shadow-md">
@@ -100,6 +155,7 @@ export function PlanTab({ isPro, servicesCount, linksCount, onUpgrade, onManage,
             {t("dashboard.plan.manage")}
           </button>
         </div>
+        <EmailDiagnostics />
       </div>
     );
   }
@@ -159,6 +215,8 @@ export function PlanTab({ isPro, servicesCount, linksCount, onUpgrade, onManage,
           </button>
         </div>
       </div>
+
+      <EmailDiagnostics />
     </div>
   );
 }

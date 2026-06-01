@@ -1,0 +1,64 @@
+# Local dev stack for Skedify backend (Postgres + Spring Boot).
+# Frontend is started natively from /frontend with `npm run dev`.
+#
+# Usage:
+#   cd backend && docker compose up -d              # postgres + backend
+#   cd backend && docker compose up -d postgres     # just the db
+#   cd backend && docker compose logs -f backend    # tail backend logs
+#   cd backend && docker compose restart backend    # apply code changes
+#   cd backend && docker compose up -d --build backend  # full rebuild
+#   cd backend && docker compose down               # stop (volume persists)
+#   cd backend && docker compose down -v            # wipe db too
+#
+# Project name is pinned so the postgres volume name does not change when
+# this file is moved around.
+
+name: skedify
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: skedify-db
+    environment:
+      POSTGRES_DB: skedify
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - skedify_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: skedify-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring profile — activates application-local.properties + DataSeeder.
+      SPRING_PROFILES_ACTIVE: local
+      # Override DB host: inside the docker network it is the service name,
+      # not localhost.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/skedify
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      # Optional secrets — left empty by default. Put them in a .env file
+      # next to this docker-compose.yml if you need real Stripe / Resend flows.
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
+
+volumes:
+  skedify_pgdata:

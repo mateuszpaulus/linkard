@@ -6,10 +6,10 @@ export interface ProfileResponse {
   avatarUrl: string | null;
   location: string | null;
   websiteUrl: string | null;
+  themeColor: string | null;
   plan: "FREE" | "PRO";
   services: ServiceResponse[];
   links: LinkResponse[];
-  availability?: AvailabilityDay[];
 }
 
 export interface ProfileRequest {
@@ -19,6 +19,7 @@ export interface ProfileRequest {
   avatarUrl?: string;
   location?: string;
   websiteUrl?: string;
+  themeColor?: string | null;
 }
 
 export interface StatsResponse {
@@ -27,6 +28,8 @@ export interface StatsResponse {
   linksCount: number;
   pendingBookings: number;
   profileUrl: string | null;
+  contactCount: number;
+  bookingCount: number;
 }
 
 export interface ServiceResponse {
@@ -78,43 +81,36 @@ export interface ProfileSummaryResponse {
 
 export interface ProfilesPage {
   content: ProfileSummaryResponse[];
+  page: number;
   totalPages: number;
   totalElements: number;
-  number: number;
   last: boolean;
 }
 
-export interface AvailabilityDay {
+export interface AvailabilitySlot {
   dayOfWeek: number;
-  enabled: boolean;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+export interface BookingRequest {
+  clientName: string;
+  clientEmail: string;
+  clientMessage?: string;
+  date: string;
   startTime: string;
   endTime: string;
 }
 
-export interface AvailabilityRequest {
-  days: AvailabilityDay[];
-}
-
-export interface BookingSlot {
-  time: string;
-  available: boolean;
-}
-
-export interface BookingRequest {
-  date: string;
-  time: string;
-  name: string;
-  email: string;
-  message?: string;
-}
-
 export interface BookingResponse {
   id: string;
-  date: string;
-  time: string;
   clientName: string;
   clientEmail: string;
-  message: string | null;
+  clientMessage: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED";
   createdAt: string;
 }

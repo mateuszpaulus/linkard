@@ -1,4 +1,4 @@
-package io.skedify.backend.config;
+package io.skedify.backend.bootstrap;
 
 import io.skedify.backend.entity.*;
 import io.skedify.backend.repository.*;
@@ -120,15 +120,15 @@ public class DataSeeder implements ApplicationRunner {
 
         int order = 0;
         for (SeedService s : services) {
-            Service svc = new Service();
-            svc.setProfile(profile);
-            svc.setTitle(s.title());
-            svc.setDescription(s.description());
-            svc.setPrice(s.price());
-            svc.setCurrency(s.currency());
-            svc.setPriceLabel(s.priceLabel());
-            svc.setDisplayOrder(order++);
-            profile.getServices().add(svc);
+            Offering offering = new Offering();
+            offering.setProfile(profile);
+            offering.setTitle(s.title());
+            offering.setDescription(s.description());
+            offering.setPrice(s.price());
+            offering.setCurrency(s.currency());
+            offering.setPriceLabel(s.priceLabel());
+            offering.setDisplayOrder(order++);
+            profile.getOfferings().add(offering);
         }
 
         order = 0;

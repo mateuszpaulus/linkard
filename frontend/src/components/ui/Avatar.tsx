@@ -1,13 +1,18 @@
-function usernameToColor(str: string): string {
+const PALETTE = [
+  "#3B82F6", "#7C3AED", "#DB2777", "#DC2626",
+  "#D97706", "#059669", "#0891B2", "#2563EB",
+];
+
+function usernameToGradient(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const palette = [
-    "#3B82F6", "#7C3AED", "#DB2777", "#DC2626",
-    "#D97706", "#059669", "#0891B2", "#2563EB",
-  ];
-  return palette[Math.abs(hash) % palette.length];
+  const h = Math.abs(hash);
+  const a = PALETTE[h % PALETTE.length];
+  const offset = (h >> 3) % (PALETTE.length - 1);
+  const b = PALETTE[(h + offset + 1) % PALETTE.length];
+  return `linear-gradient(135deg, ${a}, ${b})`;
 }
 
 function getInitials(name: string | null, fallback: string): string {
@@ -27,7 +32,7 @@ interface AvatarProps {
 
 export function Avatar({ src, name, username, size = 80, className = "" }: AvatarProps) {
   const initials = getInitials(name ?? null, username);
-  const color = usernameToColor(username);
+  const gradient = usernameToGradient(username);
 
   if (src) {
     return (
@@ -43,7 +48,7 @@ export function Avatar({ src, name, username, size = 80, className = "" }: Avata
   return (
     <div
       className={`flex items-center justify-center rounded-full font-bold text-white ${className}`}
-      style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.35 }}
+      style={{ width: size, height: size, background: gradient, fontSize: size * 0.35 }}
     >
       {initials}
     </div>

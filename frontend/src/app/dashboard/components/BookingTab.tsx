@@ -3,41 +3,33 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Lock } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import type { AvailabilitySlot, BookingResponse } from "@/lib/api";
+import { useToast } from "@/lib/toast";
+import { formatWeekday } from "@/lib/date";
+import { useDashboardCtx } from "../DashboardContext";
 
-const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-interface Props {
-  isPro: boolean;
-  availability: AvailabilitySlot[];
-  setAvailability: (slots: AvailabilitySlot[]) => void;
-  bookings: BookingResponse[];
-  onSaveAvailability: (slots: AvailabilitySlot[]) => Promise<AvailabilitySlot[]>;
-  onConfirm: (id: string) => Promise<void>;
-  onCancel: (id: string) => Promise<void>;
-  onToast: (msg: { message: string; type: "success" | "error" }) => void;
-}
-
-export function BookingTab({
-  isPro,
-  availability,
-  setAvailability,
-  bookings,
-  onSaveAvailability,
-  onConfirm,
-  onCancel,
-  onToast,
-}: Props) {
-  const { t } = useTranslation();
+export function BookingTab() {
+  const { t, locale } = useTranslation();
+  const {
+    isPro,
+    availability,
+    setAvailability,
+    bookings,
+    saveAvailability: onSaveAvailability,
+    confirm: onConfirm,
+    cancel: onCancel,
+  } = useDashboardCtx();
+  const { push: onToast } = useToast();
   const [bookingTab, setBookingTab] = useState<"upcoming" | "history">("upcoming");
   const [saving, setSaving] = useState(false);
 
   if (!isPro) {
     return (
       <div className="rounded-2xl border border-gray-100 bg-white p-12 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-violet-100 text-3xl dark:from-blue-900/30 dark:to-violet-900/30">
-          🔒
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-violet-100 text-[#3B82F6] dark:from-blue-900/30 dark:to-violet-900/30 dark:text-blue-400">
+          <Lock className="h-7 w-7" strokeWidth={2.25} />
         </div>
         <h2 className="text-lg font-bold text-[#111827] dark:text-white">
           {t("dashboard.booking.proLock")}
@@ -110,7 +102,7 @@ export function BookingTab({
             >
               <button
                 type="button"
-                aria-label={`Toggle ${DAY_NAMES[slot.dayOfWeek]}`}
+                aria-label={`Toggle ${formatWeekday(slot.dayOfWeek, locale)}`}
                 onClick={() => {
                   const updated = [...availability];
                   updated[idx] = { ...slot, isActive: !slot.isActive };
@@ -133,7 +125,7 @@ export function BookingTab({
                     : "text-gray-400 dark:text-zinc-600"
                 }`}
               >
-                {DAY_NAMES[slot.dayOfWeek]}
+                {formatWeekday(slot.dayOfWeek, locale)}
               </span>
               <div className="flex items-center gap-2">
                 <input
@@ -194,14 +186,15 @@ export function BookingTab({
         </div>
 
         {filtered.length === 0 ? (
-          <div className="py-10 text-center">
-            <div className="text-5xl">📅</div>
-            <p className="mt-3 text-sm text-[#6B7280] dark:text-zinc-400">
-              {bookingTab === "upcoming"
+          <EmptyState
+            variant="plain"
+            icon="📅"
+            title={
+              bookingTab === "upcoming"
                 ? t("dashboard.booking.emptyUpcoming")
-                : t("dashboard.booking.emptyHistory")}
-            </p>
-          </div>
+                : t("dashboard.booking.emptyHistory")
+            }
+          />
         ) : (
           <div className="space-y-3">
             {filtered.map((b) => (

@@ -1,11 +1,11 @@
 package io.skedify.backend.controller;
 
+import io.skedify.backend.auth.CurrentUser;
+import io.skedify.backend.auth.CurrentUserPrincipal;
 import io.skedify.backend.dto.*;
 import io.skedify.backend.service.BookingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -16,27 +16,21 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class BookingController {
 
-    private static final String LOCAL_TEST_CLERK_ID = "local_test_user";
-
     private final BookingService bookingService;
 
     public BookingController(BookingService bookingService) {
         this.bookingService = bookingService;
     }
 
-    private String clerkId(Jwt jwt) {
-        return jwt != null ? jwt.getSubject() : LOCAL_TEST_CLERK_ID;
-    }
-
     @GetMapping("/me/availability")
-    public List<AvailabilitySlot> getMyAvailability(@AuthenticationPrincipal Jwt jwt) {
-        return bookingService.getMyAvailability(clerkId(jwt));
+    public List<AvailabilitySlot> getMyAvailability(@CurrentUser CurrentUserPrincipal user) {
+        return bookingService.getMyAvailability(user.clerkId());
     }
 
     @PutMapping("/me/availability")
-    public List<AvailabilitySlot> saveAvailability(@AuthenticationPrincipal Jwt jwt,
+    public List<AvailabilitySlot> saveAvailability(@CurrentUser CurrentUserPrincipal user,
                                                     @RequestBody List<AvailabilitySlot> slots) {
-        return bookingService.saveAvailability(clerkId(jwt), slots);
+        return bookingService.saveAvailability(user.clerkId(), slots);
     }
 
     @GetMapping("/p/{username}/availability")
@@ -58,19 +52,19 @@ public class BookingController {
     }
 
     @GetMapping("/me/bookings")
-    public List<BookingResponse> getMyBookings(@AuthenticationPrincipal Jwt jwt) {
-        return bookingService.getMyBookings(clerkId(jwt));
+    public List<BookingResponse> getMyBookings(@CurrentUser CurrentUserPrincipal user) {
+        return bookingService.getMyBookings(user.clerkId());
     }
 
     @PatchMapping("/me/bookings/{id}/confirm")
-    public BookingResponse confirmBooking(@AuthenticationPrincipal Jwt jwt,
+    public BookingResponse confirmBooking(@CurrentUser CurrentUserPrincipal user,
                                            @PathVariable("id") UUID id) {
-        return bookingService.confirmBooking(clerkId(jwt), id);
+        return bookingService.confirmBooking(user.clerkId(), id);
     }
 
     @PatchMapping("/me/bookings/{id}/cancel")
-    public BookingResponse cancelBooking(@AuthenticationPrincipal Jwt jwt,
+    public BookingResponse cancelBooking(@CurrentUser CurrentUserPrincipal user,
                                           @PathVariable("id") UUID id) {
-        return bookingService.cancelBooking(clerkId(jwt), id);
+        return bookingService.cancelBooking(user.clerkId(), id);
     }
 }

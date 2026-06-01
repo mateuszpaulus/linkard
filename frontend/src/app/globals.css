@@ -39,17 +39,6 @@ body {
 }
 
 /* ── Animations ── */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -87,11 +76,6 @@ body {
   to { transform: scaleX(0); }
 }
 
-.animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
-  opacity: 0;
-}
-
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }
@@ -104,10 +88,6 @@ body {
   animation: scaleIn 0.3s ease-out forwards;
 }
 
-.animate-fade-in-up-delay-1 { animation-delay: 0.1s; }
-.animate-fade-in-up-delay-2 { animation-delay: 0.2s; }
-.animate-fade-in-up-delay-3 { animation-delay: 0.3s; }
-.animate-fade-in-up-delay-4 { animation-delay: 0.4s; }
 
 /* ── Gradient text helper ── */
 .text-gradient {

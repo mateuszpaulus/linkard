@@ -1,29 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { Lock, Check } from "lucide-react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { Spinner } from "@/components/ui/Spinner";
 import { useTranslation } from "@/lib/i18n";
-import type { ProfileResponse } from "@/types";
+import { useToast } from "@/lib/toast";
+import { useDashboardCtx } from "../DashboardContext";
 
 const USERNAME_REGEX = /^[a-z0-9-]{3,30}$/;
 const BIO_MAX = 160;
 
-interface Props {
-  profile: ProfileResponse | null;
-  onSave: (form: {
-    username: string;
-    displayName: string;
-    bio: string;
-    avatarUrl: string;
-    location: string;
-    websiteUrl: string;
-  }) => Promise<ProfileResponse>;
-  onToast: (msg: { message: string; type: "success" | "error" }) => void;
-}
+const THEME_COLORS = [
+  "#3B82F6", // blue (default)
+  "#7C3AED", // violet
+  "#EC4899", // pink
+  "#EF4444", // red
+  "#F97316", // orange
+  "#F59E0B", // amber
+  "#10B981", // emerald
+  "#06B6D4", // cyan
+];
 
-export function ProfileTab({ profile, onSave, onToast }: Props) {
+export function ProfileTab() {
   const { t } = useTranslation();
+  const { profile, isPro, saveProfile: onSave } = useDashboardCtx();
+  const { push: onToast } = useToast();
   const [form, setForm] = useState({
     username: profile?.username ?? "",
     displayName: profile?.displayName ?? "",
@@ -31,6 +33,7 @@ export function ProfileTab({ profile, onSave, onToast }: Props) {
     avatarUrl: profile?.avatarUrl ?? "",
     location: profile?.location ?? "",
     websiteUrl: profile?.websiteUrl ?? "",
+    themeColor: profile?.themeColor ?? null,
   });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -215,6 +218,55 @@ export function ProfileTab({ profile, onSave, onToast }: Props) {
             {errors.websiteUrl && (
               <p className="mt-1.5 text-sm text-[#EF4444]">⚠️ {errors.websiteUrl}</p>
             )}
+          </div>
+
+          {/* Theme color */}
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label className="block text-sm font-medium text-[#111827] dark:text-zinc-200">
+                {t("dashboard.profile.theme")}
+              </label>
+              {!isPro && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-[#6B7280] dark:bg-zinc-800 dark:text-zinc-400">
+                  <Lock className="h-3 w-3" strokeWidth={2.5} />
+                  {t("dashboard.profile.themeProLock")}
+                </span>
+              )}
+            </div>
+            <p className="mb-3 text-xs text-gray-400">{t("dashboard.profile.themeDesc")}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => isPro && setForm((f) => ({ ...f, themeColor: null }))}
+                disabled={!isPro}
+                aria-label={t("dashboard.profile.themeDefault")}
+                className={`flex h-10 w-10 items-center justify-center rounded-full border-2 bg-white text-[10px] font-semibold text-[#6B7280] transition-all dark:bg-zinc-800 dark:text-zinc-400 ${
+                  form.themeColor === null
+                    ? "border-[#3B82F6] ring-2 ring-[#3B82F6]/30"
+                    : "border-gray-200 dark:border-zinc-700"
+                } ${!isPro ? "cursor-not-allowed opacity-50" : "hover:border-gray-400"}`}
+              >
+                ⊘
+              </button>
+              {THEME_COLORS.map((color) => {
+                const selected = form.themeColor === color;
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => isPro && setForm((f) => ({ ...f, themeColor: color }))}
+                    disabled={!isPro}
+                    aria-label={color}
+                    style={{ backgroundColor: color }}
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all ${
+                      selected ? "border-white ring-2 ring-offset-2" : "border-white/0"
+                    } ${!isPro ? "cursor-not-allowed opacity-50" : "hover:scale-110"}`}
+                  >
+                    {selected && <Check className="h-5 w-5 text-white" strokeWidth={3} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <button

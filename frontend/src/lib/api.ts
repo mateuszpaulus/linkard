@@ -9,6 +9,15 @@ import type {
   ContactRequest,
   ProfilesPage,
   CheckoutSessionResponse,
+  AvailabilitySlot,
+  BookingRequest,
+  BookingResponse,
+} from "@/types";
+
+export type {
+  AvailabilitySlot,
+  BookingRequest,
+  BookingResponse,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -155,6 +164,14 @@ export function deleteService(token: string, id: string) {
   });
 }
 
+export function reorderServices(token: string, ids: string[]) {
+  return apiFetch<ServiceResponse[]>("/api/me/services/reorder", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export function getMyLinks(token: string) {
   return apiFetch<LinkResponse[]>("/api/me/links", { token });
 }
@@ -179,6 +196,14 @@ export function deleteLink(token: string, id: string) {
   return apiFetch<void>(`/api/me/links/${id}`, {
     method: "DELETE",
     token,
+  });
+}
+
+export function reorderLinks(token: string, ids: string[]) {
+  return apiFetch<LinkResponse[]>("/api/me/links/reorder", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ ids }),
   });
 }
 
@@ -229,31 +254,11 @@ export function getCustomerPortalUrl(token: string) {
   });
 }
 
-// ── Types (used by BookingWidget and other components) ──
-export interface AvailabilitySlot {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  isActive: boolean;
+// ── Email ──
+export function sendTestEmail(token: string) {
+  return apiFetch<void>("/api/me/email/test", {
+    method: "POST",
+    token,
+  });
 }
 
-export interface BookingRequest {
-  clientName: string;
-  clientEmail: string;
-  clientMessage?: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-}
-
-export interface BookingResponse {
-  id: string;
-  clientName: string;
-  clientEmail: string;
-  clientMessage: string | null;
-  date: string;
-  startTime: string;
-  endTime: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELLED";
-  createdAt: string;
-}

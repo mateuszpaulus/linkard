@@ -17,7 +17,8 @@
     "copy": "Kopiuj",
     "copied": "Skopiowano! ✓",
     "areYouSure": "Czy na pewno?",
-    "close_short": "Zamknij"
+    "close_short": "Zamknij",
+    "clear": "Wyczyść"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -31,7 +32,18 @@
   "home": {
     "badge": "Link-in-bio dla profesjonalistów",
     "hero": "Twój profesjonalny profil w 5 minut",
+    "heroLine": {
+      "before": "Twój ",
+      "emphasis": "profesjonalny",
+      "after": " profil w 5 minut"
+    },
     "heroSub": "Jedna strona. Wszystkie Twoje usługi. Jeden link do udostępnienia.",
+    "eyebrows": {
+      "how": "Jak to działa",
+      "forWho": "Dla kogo",
+      "features": "Funkcje"
+    },
+    "proBadge": "Pro",
     "ctaPrimary": "Stwórz profil za darmo →",
     "ctaSecondary": "Zobacz przykłady",
     "joinCount": "Dołącz do 1000+ specjalistów",
@@ -101,11 +113,15 @@
       "saved": "Profil zapisany!",
       "saveError": "Błąd zapisu profilu",
       "publicLink": "Twój publiczny link:",
-      "user": "Użytkownik"
+      "user": "Użytkownik",
+      "theme": "Kolor akcentu",
+      "themeDesc": "Wybierz kolor akcentu dla publicznego profilu.",
+      "themeDefault": "Domyślny",
+      "themeProLock": "Dostępne w Pro"
     },
     "services": {
       "title": "Moje usługi",
-      "addBtn": "+ Dodaj usługę",
+      "addBtn": "Dodaj usługę",
       "empty": "Brak usług. Dodaj pierwszą usługę.",
       "upgradeHint": "Upgrade do Pro dla nieograniczonych usług.",
       "saved": "Usługa zapisana!",
@@ -128,7 +144,7 @@
     },
     "links": {
       "title": "Moje linki",
-      "addBtn": "+ Dodaj link",
+      "addBtn": "Dodaj link",
       "empty": "Brak linków. Dodaj swoje profile społecznościowe.",
       "upgradeHint": "Upgrade do Pro dla nieograniczonych linków.",
       "saved": "Link zapisany!",
@@ -170,10 +186,15 @@
     "stats": {
       "proLock": "Statystyki dostępne w planie Pro",
       "views": "Wyświetlenia profilu",
-      "viewsSub": "ostatnie 30 dni",
+      "viewsSub": "łącznie",
       "services": "Usługi",
       "links": "Linki",
-      "pendingBookings": "Oczekujące rezerwacje"
+      "pendingBookings": "Oczekujące rezerwacje",
+      "contacts": "Otrzymane wiadomości",
+      "bookings": "Liczba rezerwacji",
+      "conversion": "Współczynnik konwersji",
+      "conversionSub": "wiadomości + rezerwacje ÷ wyświetlenia",
+      "funnelTitle": "Lejek"
     },
     "plan": {
       "freeTitle": "Plan Free",
@@ -194,7 +215,13 @@
       },
       "manage": "Zarządzaj subskrypcją",
       "upgradeError": "Błąd tworzenia sesji płatności",
-      "manageError": "Błąd otwarcia portalu płatności"
+      "manageError": "Błąd otwarcia portalu płatności",
+      "emailDiagTitle": "Diagnostyka email",
+      "emailDiagDesc": "Wyślij testowy email na adres konta, żeby sprawdzić czy dostawa działa.",
+      "testEmailBtn": "Wyślij testowy email",
+      "testEmailSending": "Wysyłam…",
+      "testEmailSent": "Email wysłany! Sprawdź skrzynkę.",
+      "testEmailError": "Błąd wysyłki testowego emaila. Sprawdź konfigurację Resend."
     },
     "error": {
       "generic": "Wystąpił błąd",
@@ -206,6 +233,7 @@
     "subtitle": "Znajdź specjalistów i poznaj ich ofertę.",
     "searchPlaceholder": "Szukaj po nazwie lub branży...",
     "noResults": "Brak wyników wyszukiwania.",
+    "noResultsFor": "Nie znaleziono profili dla \"{search}\"",
     "empty": "Brak profili do wyświetlenia.",
     "loadMore": "Załaduj więcej",
     "loading": "Ładuję...",
@@ -306,6 +334,11 @@
     "writeToMe": "Napisz do mnie",
     "replyHint": "Odpowiedź otrzymasz na podany email."
   },
+  "bookPage": {
+    "metaTitle": "Umów spotkanie z {name}",
+    "metaDesc": "Wybierz pasujący Ci termin.",
+    "heading": "Umów spotkanie z {name}"
+  },
   "booking": {
     "title": "Umów spotkanie",
     "noSlots": "Brak dostępnych godzin.",
@@ -323,9 +356,34 @@
   },
   "profile": {
     "whatIOffer": "Co oferuję",
+    "poweredBy": "Stworzone przez",
+    "shareBtn": "Udostępnij",
+    "getInTouch": {
+      "book": "Umów spotkanie",
+      "message": "Wyślij wiadomość"
+    },
+    "share": {
+      "title": "Udostępnij ten profil",
+      "linkLabel": "Link do profilu",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano! ✓",
+      "qrHint": "Albo zeskanuj kod QR",
+      "nativeShare": "Udostępnij przez…"
+    },
     "openGraph": {
       "title": "{name} — Skedify",
       "description": "Profesjonalny profil {username} na Skedify"
+    }
+  },
+  "date": {
+    "daysShort": {
+      "0": "Pn",
+      "1": "Wt",
+      "2": "Śr",
+      "3": "Cz",
+      "4": "Pt",
+      "5": "So",
+      "6": "Nd"
     }
   }
 }

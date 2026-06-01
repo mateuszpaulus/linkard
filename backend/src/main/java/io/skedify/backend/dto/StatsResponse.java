@@ -5,5 +5,7 @@ public record StatsResponse(
         int servicesCount,
         int linksCount,
         String profileUrl,
-        long pendingBookings
+        long pendingBookings,
+        long contactCount,
+        long bookingCount
 ) {}

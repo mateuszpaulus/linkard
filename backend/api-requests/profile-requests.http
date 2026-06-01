@@ -2,6 +2,10 @@
 @baseUrl = http://localhost:8080
 @username = jankowalski
 
+# Paste a Clerk JWT here (see README "Getting a token").
+# Token expires after ~60s of inactivity in Clerk dev tier — refresh as needed.
+@token = paste-clerk-jwt-here
+
 
 ### ==========================================
 ### PUBLIC PROFILE (no auth required)
@@ -11,19 +15,37 @@
 GET {{baseUrl}}/api/p/{{username}}
 Accept: application/json
 
+### Send contact message to a profile
+POST {{baseUrl}}/api/p/{{username}}/contact
+Content-Type: application/json
+
+{
+  "name": "Tester",
+  "email": "tester@example.com",
+  "message": "Hi, I'd like to talk about a project."
+}
+
+### Get public availability
+GET {{baseUrl}}/api/p/{{username}}/availability
+Accept: application/json
+
+### List all profiles (paginated)
+GET {{baseUrl}}/api/profiles?page=0&size=12
+Accept: application/json
+
 
 ### ==========================================
-### MY PROFILE (locally no token needed)
+### MY PROFILE (requires Clerk JWT)
 ### ==========================================
 
 ### Get my profile
 GET {{baseUrl}}/api/me/profile
+Authorization: Bearer {{token}}
 Accept: application/json
-
-###
 
 ### Create profile (first time setup)
 POST {{baseUrl}}/api/me/profile
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -34,15 +56,20 @@ Content-Type: application/json
   "websiteUrl": "https://jankowalski.dev"
 }
 
-###
-
-### Update profile (partial update)
+### Update profile (partial)
 PATCH {{baseUrl}}/api/me/profile
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "bio": "Updated bio: Full-stack developer helping startups build products"
+  "bio": "Updated bio",
+  "themeColor": "#7C3AED"
 }
+
+### Get my stats (views, services count, links count, contacts, bookings…)
+GET {{baseUrl}}/api/me/stats
+Authorization: Bearer {{token}}
+Accept: application/json
 
 
 ### ==========================================
@@ -51,40 +78,46 @@ Content-Type: application/json
 
 ### Get my services
 GET {{baseUrl}}/api/me/services
+Authorization: Bearer {{token}}
 Accept: application/json
-
-###
 
 ### Add service
 POST {{baseUrl}}/api/me/services
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "title": "1h Consultation",
-  "description": "We discuss your project, architecture or technical problem",
+  "description": "We discuss your project or technical problem",
   "price": 300.00,
   "currency": "PLN",
   "priceLabel": "/ hour"
 }
 
-###
-
-### Add second service
-POST {{baseUrl}}/api/me/services
+### Update service (replace UUID)
+PATCH {{baseUrl}}/api/me/services/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "title": "Code Review",
-  "description": "I review your code and provide feedback",
-  "price": 500.00,
-  "currency": "PLN",
-  "priceLabel": "/ project"
+  "price": 350.00
 }
 
-###
+### Reorder services (provide all ids in desired order)
+POST {{baseUrl}}/api/me/services/reorder
+Authorization: Bearer {{token}}
+Content-Type: application/json
 
-### Delete service (replace with real UUID from GET response)
+{
+  "ids": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ]
+}
+
+### Delete service (replace UUID)
 DELETE {{baseUrl}}/api/me/services/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
 
 
 ### ==========================================
@@ -93,12 +126,12 @@ DELETE {{baseUrl}}/api/me/services/00000000-0000-0000-0000-000000000000
 
 ### Get my links
 GET {{baseUrl}}/api/me/links
+Authorization: Bearer {{token}}
 Accept: application/json
-
-###
 
 ### Add link
 POST {{baseUrl}}/api/me/links
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
@@ -107,28 +140,38 @@ Content-Type: application/json
   "iconName": "github"
 }
 
-###
-
-### Add second link
-POST {{baseUrl}}/api/me/links
+### Reorder links
+POST {{baseUrl}}/api/me/links/reorder
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "label": "LinkedIn",
-  "url": "https://linkedin.com/in/jankowalski",
-  "iconName": "linkedin"
+  "ids": [
+    "00000000-0000-0000-0000-000000000001",
+    "00000000-0000-0000-0000-000000000002"
+  ]
 }
 
-###
-
-### Delete link (replace with real UUID from GET response)
+### Delete link (replace UUID)
 DELETE {{baseUrl}}/api/me/links/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+
+### ==========================================
+### EMAIL DIAGNOSTICS
+### ==========================================
+
+### Send test email to logged-in user's address
+POST {{baseUrl}}/api/me/email/test
+Authorization: Bearer {{token}}
 
 
 ### ==========================================
 ### TEST FLOW
-### 1. POST /api/me/profile    -> creates user + profile
-### 2. POST /api/me/services   -> adds a service
-### 3. POST /api/me/links      -> adds a link
-### 4. GET  /api/p/jankowalski -> public view (verify everything saved)
+### 1. POST /api/me/profile           -> creates user + profile
+### 2. POST /api/me/services          -> adds services
+### 3. POST /api/me/links             -> adds links
+### 4. GET  /api/p/jankowalski        -> public view (verifies save)
+### 5. POST /api/p/jankowalski/contact -> sends a message (records CONTACT event)
+### 6. GET  /api/me/stats             -> see contactCount / bookingCount
 ### ==========================================

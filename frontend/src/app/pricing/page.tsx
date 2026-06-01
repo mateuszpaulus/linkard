@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import { Header } from "@/components/ui/Header";
 import { Footer } from "@/components/ui/Footer";
 import { Spinner } from "@/components/ui/Spinner";
+import { FadeInUp } from "@/components/ui/FadeInUp";
 import { createCheckoutSession } from "@/lib/api";
 import { useTranslation } from "@/lib/i18n";
 
@@ -73,7 +74,7 @@ export default function PricingPage() {
 
       <main className="mx-auto max-w-5xl px-4 py-16 md:py-20 lg:px-8">
         {/* Hero */}
-        <div className="mb-12 animate-fade-in-up text-center">
+        <FadeInUp className="mb-12 text-center">
           <span className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
             💎 {t("pricing.subtitle")}
           </span>
@@ -107,12 +108,12 @@ export default function PricingPage() {
               </span>
             </button>
           </div>
-        </div>
+        </FadeInUp>
 
         {/* Plans */}
         <div className="grid gap-6 md:grid-cols-2 md:items-start">
           {/* FREE */}
-          <div className="animate-fade-in-up animate-fade-in-up-delay-1 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <FadeInUp delay={0.1} className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <h2 className="text-xl font-bold text-[#111827] dark:text-white">
               {t("pricing.freeTitle")}
             </h2>
@@ -174,10 +175,10 @@ export default function PricingPage() {
                 </button>
               )}
             </div>
-          </div>
+          </FadeInUp>
 
           {/* PRO */}
-          <div className="relative animate-fade-in-up animate-fade-in-up-delay-2 md:scale-105">
+          <FadeInUp delay={0.2} className="relative md:scale-105">
             {/* Gradient border wrap */}
             <div className="rounded-2xl bg-gradient-to-br from-[#3B82F6] to-[#7C3AED] p-[2px] shadow-xl shadow-blue-500/20">
               <div className="rounded-2xl bg-white p-8 dark:bg-zinc-900">
@@ -238,7 +239,7 @@ export default function PricingPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </FadeInUp>
         </div>
 
         <p className="mt-8 text-center text-sm text-[#6B7280] dark:text-zinc-400">

@@ -41,6 +41,10 @@ public class Profile {
 
     private String websiteUrl;
 
+    @Column(length = 7)
+    @Pattern(regexp = "^#[0-9A-Fa-f]{6}$")
+    private String themeColor;
+
     @Column(updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -50,7 +54,7 @@ public class Profile {
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")
-    private List<Service> services = new ArrayList<>();
+    private List<Offering> offerings = new ArrayList<>();
 
     @OneToMany(mappedBy = "profile", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("displayOrder ASC")

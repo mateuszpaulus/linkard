@@ -11,6 +11,7 @@ public record ProfileResponse(
         String avatarUrl,
         String location,
         String websiteUrl,
+        String themeColor,
         List<ServiceResponse> services,
         List<LinkResponse> links,
         String plan

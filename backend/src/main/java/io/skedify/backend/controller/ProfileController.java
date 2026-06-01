@@ -1,11 +1,14 @@
 package io.skedify.backend.controller;
 
+import io.skedify.backend.auth.CurrentUser;
+import io.skedify.backend.auth.CurrentUserPrincipal;
 import io.skedify.backend.dto.*;
+import io.skedify.backend.service.ContactService;
+import io.skedify.backend.service.LinkService;
 import io.skedify.backend.service.ProfileService;
+import io.skedify.backend.service.OfferingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,21 +18,19 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class ProfileController {
 
-    private static final String LOCAL_TEST_CLERK_ID = "local_test_user";
-    private static final String LOCAL_TEST_EMAIL = "test@local.dev";
-
     private final ProfileService profileService;
+    private final OfferingService offeringService;
+    private final LinkService linkService;
+    private final ContactService contactService;
 
-    public ProfileController(ProfileService profileService) {
+    public ProfileController(ProfileService profileService,
+                             OfferingService offeringService,
+                             LinkService linkService,
+                             ContactService contactService) {
         this.profileService = profileService;
-    }
-
-    private String clerkId(Jwt jwt) {
-        return jwt != null ? jwt.getSubject() : LOCAL_TEST_CLERK_ID;
-    }
-
-    private String email(Jwt jwt) {
-        return jwt != null ? jwt.getClaimAsString("email") : LOCAL_TEST_EMAIL;
+        this.offeringService = offeringService;
+        this.linkService = linkService;
+        this.contactService = contactService;
     }
 
     @GetMapping("/p/{username}")
@@ -41,7 +42,7 @@ public class ProfileController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void contact(@PathVariable("username") String username,
                         @Valid @RequestBody ContactRequest request) {
-        profileService.sendContact(username, request);
+        contactService.sendContact(username, request);
     }
 
     @GetMapping("/profiles")
@@ -53,75 +54,93 @@ public class ProfileController {
     }
 
     @GetMapping("/me/profile")
-    public ProfileResponse getMyProfile(@AuthenticationPrincipal Jwt jwt) {
-        return profileService.getMyProfile(clerkId(jwt));
+    public ProfileResponse getMyProfile(@CurrentUser CurrentUserPrincipal user) {
+        return profileService.getMyProfile(user.clerkId());
     }
 
     @PostMapping("/me/profile")
     @ResponseStatus(HttpStatus.CREATED)
-    public ProfileResponse createProfile(@AuthenticationPrincipal Jwt jwt,
+    public ProfileResponse createProfile(@CurrentUser CurrentUserPrincipal user,
                                          @Valid @RequestBody ProfileRequest request) {
-        return profileService.createOrUpdateProfile(clerkId(jwt), email(jwt), request);
+        return profileService.createOrUpdateProfile(user.clerkId(), user.email(), request);
     }
 
     @PatchMapping("/me/profile")
-    public ProfileResponse updateProfile(@AuthenticationPrincipal Jwt jwt,
-                                         @RequestBody ProfileRequest request) {
-        return profileService.createOrUpdateProfile(clerkId(jwt), email(jwt), request);
+    public ProfileResponse updateProfile(@CurrentUser CurrentUserPrincipal user,
+                                         @Valid @RequestBody ProfileRequest request) {
+        return profileService.createOrUpdateProfile(user.clerkId(), user.email(), request);
     }
 
     @GetMapping("/me/stats")
-    public StatsResponse getMyStats(@AuthenticationPrincipal Jwt jwt) {
-        return profileService.getMyStats(clerkId(jwt));
+    public StatsResponse getMyStats(@CurrentUser CurrentUserPrincipal user) {
+        return profileService.getMyStats(user.clerkId());
     }
 
     @GetMapping("/me/services")
-    public List<ServiceResponse> getMyServices(@AuthenticationPrincipal Jwt jwt) {
-        return profileService.getMyServices(clerkId(jwt));
+    public List<ServiceResponse> getMyServices(@CurrentUser CurrentUserPrincipal user) {
+        return offeringService.getMyOfferings(user.clerkId());
     }
 
     @PostMapping("/me/services")
     @ResponseStatus(HttpStatus.CREATED)
-    public ServiceResponse addService(@AuthenticationPrincipal Jwt jwt,
+    public ServiceResponse addService(@CurrentUser CurrentUserPrincipal user,
                                       @Valid @RequestBody ServiceRequest request) {
-        return profileService.addService(clerkId(jwt), request);
+        return offeringService.addOffering(user.clerkId(), request);
     }
 
     @PatchMapping("/me/services/{id}")
-    public ServiceResponse updateService(@AuthenticationPrincipal Jwt jwt,
+    public ServiceResponse updateService(@CurrentUser CurrentUserPrincipal user,
                                          @PathVariable("id") UUID id,
                                          @RequestBody ServiceRequest request) {
-        return profileService.updateService(clerkId(jwt), id, request);
+        return offeringService.updateOffering(user.clerkId(), id, request);
     }
 
     @DeleteMapping("/me/services/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteService(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        profileService.deleteService(clerkId(jwt), id);
+    public void deleteService(@CurrentUser CurrentUserPrincipal user, @PathVariable("id") UUID id) {
+        offeringService.deleteOffering(user.clerkId(), id);
+    }
+
+    @PostMapping("/me/services/reorder")
+    public List<ServiceResponse> reorderServices(@CurrentUser CurrentUserPrincipal user,
+                                                  @Valid @RequestBody ReorderRequest request) {
+        return offeringService.reorderOfferings(user.clerkId(), request.ids());
     }
 
     @GetMapping("/me/links")
-    public List<LinkResponse> getMyLinks(@AuthenticationPrincipal Jwt jwt) {
-        return profileService.getMyLinks(clerkId(jwt));
+    public List<LinkResponse> getMyLinks(@CurrentUser CurrentUserPrincipal user) {
+        return linkService.getMyLinks(user.clerkId());
     }
 
     @PostMapping("/me/links")
     @ResponseStatus(HttpStatus.CREATED)
-    public LinkResponse addLink(@AuthenticationPrincipal Jwt jwt,
+    public LinkResponse addLink(@CurrentUser CurrentUserPrincipal user,
                                 @Valid @RequestBody LinkRequest request) {
-        return profileService.addLink(clerkId(jwt), request);
+        return linkService.addLink(user.clerkId(), request);
     }
 
     @PatchMapping("/me/links/{id}")
-    public LinkResponse updateLink(@AuthenticationPrincipal Jwt jwt,
+    public LinkResponse updateLink(@CurrentUser CurrentUserPrincipal user,
                                    @PathVariable("id") UUID id,
                                    @RequestBody LinkRequest request) {
-        return profileService.updateLink(clerkId(jwt), id, request);
+        return linkService.updateLink(user.clerkId(), id, request);
     }
 
     @DeleteMapping("/me/links/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteLink(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        profileService.deleteLink(clerkId(jwt), id);
+    public void deleteLink(@CurrentUser CurrentUserPrincipal user, @PathVariable("id") UUID id) {
+        linkService.deleteLink(user.clerkId(), id);
+    }
+
+    @PostMapping("/me/links/reorder")
+    public List<LinkResponse> reorderLinks(@CurrentUser CurrentUserPrincipal user,
+                                           @Valid @RequestBody ReorderRequest request) {
+        return linkService.reorderLinks(user.clerkId(), request.ids());
+    }
+
+    @PostMapping("/me/email/test")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendTestEmail(@CurrentUser CurrentUserPrincipal user) {
+        profileService.sendTestEmail(user.clerkId());
     }
 }

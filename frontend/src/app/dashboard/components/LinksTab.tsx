@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "@/lib/i18n";
+import { useToast } from "@/lib/toast";
+import { useDashboardCtx } from "../DashboardContext";
 import type { LinkResponse } from "@/types";
-
-interface Props {
-  links: LinkResponse[];
-  isPro: boolean;
-  onCreateOrUpdate: (
-    id: string | null,
-    data: { label: string; url: string; iconName: string }
-  ) => Promise<LinkResponse>;
-  onRemove: (id: string) => Promise<void>;
-  onToast: (msg: { message: string; type: "success" | "error" }) => void;
-}
 
 const PLATFORMS = [
   { value: "linkedin", label: "LinkedIn", icon: "💼", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" },
@@ -31,7 +24,15 @@ function getPlatform(iconName: string | null) {
   return PLATFORMS.find((p) => p.value === iconName) ?? PLATFORMS[PLATFORMS.length - 1];
 }
 
-export function LinksTab({ links, isPro, onCreateOrUpdate, onRemove, onToast }: Props) {
+export function LinksTab() {
+  const {
+    links,
+    isPro,
+    createOrUpdateLink: onCreateOrUpdate,
+    removeLink: onRemove,
+    reorderLinks: onReorder,
+  } = useDashboardCtx();
+  const { push: onToast } = useToast();
   const { t } = useTranslation();
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<LinkResponse | null>(null);
@@ -90,6 +91,18 @@ export function LinksTab({ links, isPro, onCreateOrUpdate, onRemove, onToast }: 
     }
   }
 
+  async function move(idx: number, delta: -1 | 1) {
+    const target = idx + delta;
+    if (target < 0 || target >= links.length) return;
+    const ids = links.map((l) => l.id);
+    [ids[idx], ids[target]] = [ids[target], ids[idx]];
+    try {
+      await onReorder(ids);
+    } catch {
+      onToast({ message: t("dashboard.links.saveError"), type: "error" });
+    }
+  }
+
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -102,9 +115,10 @@ export function LinksTab({ links, isPro, onCreateOrUpdate, onRemove, onToast }: 
         <button
           onClick={openAdd}
           disabled={!canAdd}
-          className="inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2563EB] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#3B82F6] px-5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2563EB] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
         >
-          + {t("dashboard.links.addBtn")}
+          <Plus className="h-4 w-4" strokeWidth={2.5} />
+          {t("dashboard.links.addBtn")}
         </button>
       </div>
 
@@ -118,30 +132,49 @@ export function LinksTab({ links, isPro, onCreateOrUpdate, onRemove, onToast }: 
       )}
 
       {links.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center dark:border-zinc-700">
-          <div className="mx-auto mb-4 text-6xl">🔗</div>
-          <p className="text-lg font-semibold text-[#111827] dark:text-white">
-            No social links yet
-          </p>
-          <p className="mt-2 text-sm text-[#6B7280] dark:text-zinc-400">
-            Connect your social profiles so people can find you
-          </p>
-          <button
-            onClick={openAdd}
-            className="mt-6 inline-flex h-11 items-center rounded-xl bg-[#3B82F6] px-6 text-sm font-semibold text-white hover:bg-[#2563EB]"
-          >
-            + {t("dashboard.links.addBtn")}
-          </button>
-        </div>
+        <EmptyState
+          icon="🔗"
+          title="No social links yet"
+          description="Connect your social profiles so people can find you"
+          action={
+            <button
+              onClick={openAdd}
+              className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-[#3B82F6] px-6 text-sm font-semibold text-white hover:bg-[#2563EB]"
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              {t("dashboard.links.addBtn")}
+            </button>
+          }
+        />
       ) : (
         <div className="space-y-3">
-          {links.map((l) => {
+          {links.map((l, idx) => {
             const platform = getPlatform(l.iconName);
             return (
               <div
                 key={l.id}
-                className="flex items-center gap-4 rounded-2xl border border-gray-100 bg-white px-5 py-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
+                className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-4 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
               >
+                <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    aria-label="Move up"
+                    disabled={idx === 0}
+                    onClick={() => move(idx, -1)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] transition-colors hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  >
+                    <ChevronUp className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move down"
+                    disabled={idx === links.length - 1}
+                    onClick={() => move(idx, 1)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-[#6B7280] transition-colors hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  >
+                    <ChevronDown className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
+                </div>
                 <span
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${platform.color}`}
                 >

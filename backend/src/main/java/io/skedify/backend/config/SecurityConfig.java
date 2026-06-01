@@ -24,7 +24,9 @@ public class SecurityConfig {
             "/api/p/",
             "/api/profiles",
             "/api/webhooks/",
-            "/actuator/health"
+            "/actuator/health",
+            "/v3/api-docs",
+            "/swagger-ui"
     );
 
     @Bean
@@ -39,6 +41,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/p/**").permitAll()
                 .requestMatchers("/api/webhooks/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

@@ -19,22 +19,25 @@ public class BookingService {
     private final AvailabilityRepository availabilityRepository;
     private final BookingRepository bookingRepository;
     private final EmailService emailService;
+    private final ProfileEventService profileEventService;
 
     public BookingService(ProfileRepository profileRepository, AvailabilityRepository availabilityRepository,
-                          BookingRepository bookingRepository, EmailService emailService) {
+                          BookingRepository bookingRepository, EmailService emailService,
+                          ProfileEventService profileEventService) {
         this.profileRepository = profileRepository;
         this.availabilityRepository = availabilityRepository;
         this.bookingRepository = bookingRepository;
         this.emailService = emailService;
+        this.profileEventService = profileEventService;
     }
 
     private void requirePro(String clerkId) {
-        profileRepository.findByUserClerkId(clerkId).ifPresent(profile -> {
-            if (profile.getUser().getSubscriptionStatus() != User.SubscriptionStatus.PRO) {
-                throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
-                        "Booking feature requires Pro plan.");
-            }
-        });
+        Profile profile = profileRepository.findByUserClerkId(clerkId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
+        if (profile.getUser().getSubscriptionStatus() != User.SubscriptionStatus.PRO) {
+            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+                    "Booking feature requires Pro plan.");
+        }
     }
 
     public List<AvailabilitySlot> getMyAvailability(String clerkId) {
@@ -94,6 +97,7 @@ public class BookingService {
         Booking saved = bookingRepository.save(booking);
 
         emailService.sendNewBookingNotification(profile, saved);
+        profileEventService.record(profile, ProfileEvent.Type.BOOK);
 
         return toBookingResponse(saved);
     }
